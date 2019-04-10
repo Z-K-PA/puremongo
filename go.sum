@@ -1,0 +1,7 @@
+github.com/globalsign/mgo v0.0.0-20180615134936-113d3961e731 h1:y7wyeiA6T+TT+HGC9DYypvLkUeg99N4rqHMzn2MmjYk=
+github.com/globalsign/mgo v0.0.0-20180615134936-113d3961e731/go.mod h1:xkRDCp4j0OGD1HRkm4kmhM+pmpv3AKq5SU7GMg4oO/Q=
+github.com/go-mgo/mgo v0.0.0-20160801194620-b6121c6199b7/go.mod h1:M6gLQ7smMNhLvDG6Dv6inWBcT/S0rXKM2PNT0/Qu7es=
+github.com/go-stack/stack v1.8.0 h1:5SgMzNM5HxrEjV0ww2lTmX6E2Izsfxas4+YHWRs3Lsk=
+github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
+github.com/mongodb/mongo-go-driver v1.0.0 h1:aq055NT+Xu6ta/f7D51gIbLHIZwM0Gwzt9RHfmrzs6A=
+github.com/mongodb/mongo-go-driver v1.0.0/go.mod h1:NK/HWDIIZkaYsnYa0hmtP443T5ELr0KDecmIioVuuyU=
