@@ -1,5 +1,9 @@
 package wire_protocol
 
+import (
+	"pure_mongos/pure_mongo/bson"
+)
+
 const (
 	QueryFlagTailCursor      = 1 << 1
 	QueryFlagSlaveOk         = 1 << 2
@@ -16,11 +20,12 @@ type QueryMsg struct {
 	FullCollName string
 	NumToSkip    int32
 	NumToReturn  int32
+	Doc          bson.IDoc
 }
 
 func NewQueryMsg() *QueryMsg {
 	qMsg := &QueryMsg{
-		Header:MsgHeader{
+		Header: MsgHeader{
 			OpCode: OpQuery,
 		},
 	}
@@ -36,7 +41,32 @@ func (qMsg *QueryMsg) SetFlag(flags ...int32) {
 	}
 }
 
+//添加查询doc
+func (qMsg *QueryMsg) AddDoc(pairs ...bson.DocPair) {
+	if qMsg.Doc == nil {
+		qMsg.Doc = bson.AddDoc(pairs...)
+	} else {
+		qMsg.Doc.AddDoc(pairs...)
+	}
+}
+
 //序列化
-func (qMsg *QueryMsg) Marshal(buf []byte) (out []byte, err error) {
+func (qMsg *QueryMsg) Marshal(buf *[]byte) (count int32, err error) {
+	var docCount int32
+
+	pos := int32(0)
+
+	pos += qMsg.Header.Write(buf, pos)
+
+	pos += WriteInt32(qMsg.Flags, buf, pos)
+
+	pos += WriteCString(qMsg.FullCollName, buf, pos)
+
+	pos += WriteInt32(qMsg.NumToSkip, buf, pos)
+
+	pos += WriteInt32(qMsg.NumToReturn, buf, pos)
+
+	docCount, err = qMsg.Doc.MarshalBuffer(buf, pos)
+	count = pos + docCount
 	return
 }

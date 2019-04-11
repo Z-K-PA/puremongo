@@ -35,6 +35,7 @@ func getTestStruct() XField {
 }
 
 func TestMgoBufferWithMap(t *testing.T) {
+	InitDriver()
 
 	x := getTestMap()
 	cacheBuf := make([]byte, 16*1024)
@@ -59,6 +60,8 @@ func TestMgoBufferWithMap(t *testing.T) {
 }
 
 func TestMgoWithMap(t *testing.T) {
+	InitDriver()
+
 	x := getTestMap()
 
 	t1 := time.Now()
@@ -78,6 +81,7 @@ func TestMgoWithMap(t *testing.T) {
 }
 
 func TestMgoBufferWithStruct(t *testing.T) {
+	InitDriver()
 
 	x := getTestStruct()
 	cacheBuf := make([]byte, 16*1024)
@@ -102,6 +106,8 @@ func TestMgoBufferWithStruct(t *testing.T) {
 }
 
 func TestMgoWithStruct(t *testing.T) {
+	InitDriver()
+
 	x := getTestStruct()
 
 	t1 := time.Now()

@@ -38,9 +38,11 @@ func (h *MsgHeader) Read(buf []byte) {
 }
 
 //写入消息头
-func (h *MsgHeader) Write(buf []byte) {
-	WriteInt32(h.MsgLen, buf, 0)
-	WriteInt32(h.ReqId, buf, 4)
-	WriteInt32(h.ResTo, buf, 8)
-	WriteInt32(h.OpCode, buf, 12)
+func (h *MsgHeader) Write(buf *[]byte, pos int32) (count int32) {
+	WriteInt32(h.MsgLen, buf, pos)
+	WriteInt32(h.ReqId, buf, pos+4)
+	WriteInt32(h.ResTo, buf, pos+8)
+	WriteInt32(h.OpCode, buf, pos+12)
+
+	return HeaderLen
 }
