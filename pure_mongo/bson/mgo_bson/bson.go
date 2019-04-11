@@ -2,11 +2,12 @@ package mgo_bson
 
 import (
 	mgo_bson "github.com/globalsign/mgo/bson"
+	"pure_mongos/pure_mongo/binary"
 	"pure_mongos/pure_mongo/bson"
 )
 
 func InitDriver() {
-	bson.MarshalBsonWithBuffer = mgo_bson.MarshalBuffer
+	bson.MarshalBsonWithBuffer = marshalBsonWithBuffer
 	bson.MarshalBson = mgo_bson.Marshal
 	bson.UnMarshalBson = mgo_bson.Unmarshal
 	bson.AddDoc = addDoc
@@ -17,21 +18,19 @@ type MgoDoc struct {
 	mgo_bson.D
 }
 
-func (d *MgoDoc) MarshalBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
+func marshalBsonWithBuffer(in interface{}, buf *[]byte, pos int32) (bsonLen int32, err error) {
 	var out []byte
 
-	out, err = mgo_bson.MarshalBuffer(d.D, (*buf)[pos:pos])
-	docLen = int32(len(out))
-
-	length := int(pos + docLen)
-	if cap(*buf) < length {
-		//内存不够，需要重新分配
-		*buf = append(*buf, out...)
-		//扩大buf
-		*buf = (*buf)[:cap(*buf)]
+	out, err = mgo_bson.MarshalBuffer(in, (*buf)[pos:pos])
+	if err != nil {
+		return
 	}
-
+	bsonLen = binary.AppendBytesIfNeed(buf, out, pos)
 	return
+}
+
+func (d *MgoDoc) MarshalBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
+	return marshalBsonWithBuffer(d.D, buf, pos)
 }
 
 func (d *MgoDoc) AddDoc(docPairs ...bson.DocPair) {

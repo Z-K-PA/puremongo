@@ -3,44 +3,41 @@ package mongo_driver_bson
 import (
 	driver_bson "go.mongodb.org/mongo-driver/bson"
 	driver_bsonx "go.mongodb.org/mongo-driver/x/bsonx"
+	"pure_mongos/pure_mongo/binary"
 	"pure_mongos/pure_mongo/bson"
 )
 
 func InitDriver() {
-	bson.MarshalBsonWithBuffer = marshalAppend
+	bson.MarshalBsonWithBuffer = marshalBsonWithBuffer
 	bson.MarshalBson = driver_bson.Marshal
 	bson.UnMarshalBson = driver_bson.Unmarshal
 	bson.AddDoc = addDoc
 	bson.CurrentDriverMode = bson.DriverModeMongoDriver
 }
 
-func marshalAppend(in interface{}, buf []byte) (out []byte, err error) {
-	return driver_bson.MarshalAppend(buf, in)
+func marshalBsonWithBuffer(in interface{}, buf *[]byte, pos int32) (bsonLen int32, err error) {
+	var out []byte
+
+	out, err = driver_bson.MarshalAppend((*buf)[pos:pos], in)
+	if err != nil {
+		return
+	}
+	bsonLen = binary.AppendBytesIfNeed(buf, out, pos)
+	return
 }
 
 type DriverDoc struct {
 	driver_bsonx.Doc
 }
 
-func (d *DriverDoc) MarshalBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
+func (d *DriverDoc) MarshalBuffer(buf *[]byte, pos int32) (bsonLen int32, err error) {
 	var out []byte
 
-	out, err = d.Doc.MarshalBSON()
+	out, err = d.Doc.AppendMarshalBSON((*buf)[pos:pos])
 	if err != nil {
 		return
 	}
-
-	docLen = int32(len(out))
-	if len((*buf)[pos:]) < int(docLen) {
-		//内存不够，需要重新分配
-		*buf = append(*buf, out...)
-		//扩大buf
-		*buf = (*buf)[:cap(*buf)]
-	} else {
-		//直接拷贝结果
-		copy((*buf)[pos:], out)
-	}
-
+	bsonLen = binary.AppendBytesIfNeed(buf, out, pos)
 	return
 }
 

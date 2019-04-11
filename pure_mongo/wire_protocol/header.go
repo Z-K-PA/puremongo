@@ -1,5 +1,7 @@
 package wire_protocol
 
+import "pure_mongos/pure_mongo/binary"
+
 const (
 	HeaderLen = 16 //MsgLen
 )
@@ -31,18 +33,18 @@ type MsgHeader struct {
 
 //读取消息头
 func (h *MsgHeader) Read(buf []byte) {
-	h.MsgLen = ReadInt32(buf, 0)
-	h.ReqId = ReadInt32(buf, 4)
-	h.ResTo = ReadInt32(buf, 8)
-	h.OpCode = ReadInt32(buf, 12)
+	h.MsgLen = binary.ReadInt32(buf, 0)
+	h.ReqId = binary.ReadInt32(buf, 4)
+	h.ResTo = binary.ReadInt32(buf, 8)
+	h.OpCode = binary.ReadInt32(buf, 12)
 }
 
 //写入消息头
 func (h *MsgHeader) Write(buf *[]byte, pos int32) (count int32) {
-	WriteInt32(h.MsgLen, buf, pos)
-	WriteInt32(h.ReqId, buf, pos+4)
-	WriteInt32(h.ResTo, buf, pos+8)
-	WriteInt32(h.OpCode, buf, pos+12)
+	binary.WriteInt32(h.MsgLen, buf, pos)
+	binary.WriteInt32(h.ReqId, buf, pos+4)
+	binary.WriteInt32(h.ResTo, buf, pos+8)
+	binary.WriteInt32(h.OpCode, buf, pos+12)
 
 	return HeaderLen
 }

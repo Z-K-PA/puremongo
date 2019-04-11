@@ -1,7 +1,7 @@
 package bson
 
 //序列化bson-带buffer
-type MarshalBsonWithBufferFunc func(in interface{}, buf []byte) (out []byte, err error)
+type MarshalBsonWithBufferFunc func(in interface{}, buf *[]byte, pos int32) (bsonLen int32, err error)
 
 //序列化bson
 type MarshalBsonFunc func(in interface{}) (out []byte, err error)

@@ -42,14 +42,14 @@ func TestMgoBufferWithMap(t *testing.T) {
 	t1 := time.Now()
 	for i := 0; i < 100000; i++ {
 		var xVal map[string]interface{}
-		outBuf, err := bson.MarshalBsonWithBuffer(x, cacheBuf[0:0])
-		if len(outBuf) > len(cacheBuf) {
+		outL, err := bson.MarshalBsonWithBuffer(x, &cacheBuf, 0)
+		if int(outL) > len(cacheBuf) {
 			t.Fail()
 		}
 		if err != nil {
 			t.Errorf("marsal error :%+v", err)
 		}
-		err = bson.UnMarshalBson(outBuf, &xVal)
+		err = bson.UnMarshalBson(cacheBuf[:outL], &xVal)
 		if err != nil {
 			t.Errorf("marsal error :%+v", err)
 		}
@@ -85,14 +85,14 @@ func TestMgoBufferWithStruct(t *testing.T) {
 	t1 := time.Now()
 	for i := 0; i < 100000; i++ {
 		var xVal XField
-		outBuf, err := bson.MarshalBsonWithBuffer(x, cacheBuf[0:0])
-		if len(outBuf) > len(cacheBuf) {
+		outL, err := bson.MarshalBsonWithBuffer(x, &cacheBuf, 0)
+		if int(outL) > len(cacheBuf) {
 			t.Fail()
 		}
 		if err != nil {
 			t.Errorf("marsal error :%+v", err)
 		}
-		err = bson.UnMarshalBson(outBuf, &xVal)
+		err = bson.UnMarshalBson(cacheBuf[:outL], &xVal)
 		if err != nil {
 			t.Errorf("marsal error :%+v", err)
 		}

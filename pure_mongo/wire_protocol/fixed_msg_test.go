@@ -29,6 +29,7 @@ func TestInitQueryCompare(t *testing.T) {
 	buf2 := initQueryMetaBuffer()
 
 	t.Logf("buf1 count:%+v, buf2 count:%+v\n", len(buf1), len(buf2))
+	t.Logf("buf1 cap:%+v, buf2 cap:%+v\n", cap(buf1), cap(buf2))
 	if !bytes.Equal(buf1, buf2) {
 		t.Fail()
 	}

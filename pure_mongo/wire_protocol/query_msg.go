@@ -1,6 +1,7 @@
 package wire_protocol
 
 import (
+	"pure_mongos/pure_mongo/binary"
 	"pure_mongos/pure_mongo/bson"
 )
 
@@ -21,6 +22,7 @@ type QueryMsg struct {
 	NumToSkip    int32
 	NumToReturn  int32
 	Doc          bson.IDoc
+	Selector     interface{}
 }
 
 func NewQueryMsg() *QueryMsg {
@@ -50,6 +52,11 @@ func (qMsg *QueryMsg) AddDoc(pairs ...bson.DocPair) {
 	}
 }
 
+//设置查询selector
+func (qMsg *QueryMsg) SetSelector(selector interface{}) {
+	qMsg.Selector = selector
+}
+
 //序列化
 func (qMsg *QueryMsg) Marshal(buf *[]byte) (count int32, err error) {
 	var docCount int32
@@ -58,15 +65,25 @@ func (qMsg *QueryMsg) Marshal(buf *[]byte) (count int32, err error) {
 
 	pos += qMsg.Header.Write(buf, pos)
 
-	pos += WriteInt32(qMsg.Flags, buf, pos)
+	pos += binary.WriteInt32(qMsg.Flags, buf, pos)
 
-	pos += WriteCString(qMsg.FullCollName, buf, pos)
+	pos += binary.WriteCString(qMsg.FullCollName, buf, pos)
 
-	pos += WriteInt32(qMsg.NumToSkip, buf, pos)
+	pos += binary.WriteInt32(qMsg.NumToSkip, buf, pos)
 
-	pos += WriteInt32(qMsg.NumToReturn, buf, pos)
+	pos += binary.WriteInt32(qMsg.NumToReturn, buf, pos)
 
 	docCount, err = qMsg.Doc.MarshalBuffer(buf, pos)
-	count = pos + docCount
+	if err != nil {
+		return
+	}
+
+	pos += docCount
+	if qMsg.Selector != nil {
+		docCount, err = bson.MarshalBsonWithBuffer(qMsg.Selector, buf, pos)
+		pos += docCount
+	}
+
+	count = pos
 	return
 }

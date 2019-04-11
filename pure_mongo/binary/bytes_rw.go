@@ -1,4 +1,4 @@
-package wire_protocol
+package binary
 
 import (
 	"bytes"
@@ -82,6 +82,19 @@ func WriteCString(val string, buf *[]byte, pos int32) (count int32) {
 	copy((*buf)[pos:], bval)
 	(*buf)[pos+count-1] = 0
 
+	return
+}
+
+//只在分配内存不够时追加字节切片到另一个切片
+func AppendBytesIfNeed(buf *[]byte, out []byte, pos int32) (bsonLen int32) {
+	bsonLen = int32(len(out))
+	length := int(pos + bsonLen)
+	if cap(*buf) < length {
+		//内存不够，需要重新分配
+		*buf = append(*buf, out...)
+		//扩大buf
+		*buf = (*buf)[:cap(*buf)]
+	}
 	return
 }
 
