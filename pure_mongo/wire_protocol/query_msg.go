@@ -16,8 +16,6 @@ type QueryMsg struct {
 	FullCollName string
 	NumToSkip    int32
 	NumToReturn  int32
-
-	rawBuf []byte
 }
 
 func NewQueryMsg() *QueryMsg {
@@ -36,4 +34,9 @@ func (qMsg *QueryMsg) SetFlag(flags ...int32) {
 	for _, flag := range flags {
 		qMsg.Flags |= flag
 	}
+}
+
+//序列化
+func (qMsg *QueryMsg) Marshal(buf []byte) (out []byte, err error) {
+	return
 }

@@ -1,9 +1,10 @@
-package wire_protocol
+package connection
 
 import (
 	"errors"
 	"io"
 	"net"
+	"pure_mongos/pure_mongo/wire_protocol"
 	"time"
 )
 
@@ -50,7 +51,7 @@ func SendMsg(conn net.Conn, buf []byte, deadline time.Time) (err error) {
 }
 
 //接收消息
-func ReadMsg(conn net.Conn, buf []byte, deadline time.Time) (msgHeader MsgHeader, rawData []byte, err error) {
+func ReadMsg(conn net.Conn, buf []byte, deadline time.Time) (msgHeader wire_protocol.MsgHeader, rawData []byte, err error) {
 	//设置超时
 	err = conn.SetDeadline(deadline)
 	if err != nil {
@@ -59,7 +60,7 @@ func ReadMsg(conn net.Conn, buf []byte, deadline time.Time) (msgHeader MsgHeader
 
 	rawData = buf
 	//读取头部
-	headBuf := buf[:HeaderLen]
+	headBuf := buf[:wire_protocol.HeaderLen]
 	_, err = io.ReadFull(conn, headBuf)
 	if err != nil {
 		return
@@ -72,7 +73,7 @@ func ReadMsg(conn net.Conn, buf []byte, deadline time.Time) (msgHeader MsgHeader
 		copy(rawData, headBuf)
 	}
 
-	dataBuf := rawData[HeaderLen:]
+	dataBuf := rawData[wire_protocol.HeaderLen:]
 	_, err = io.ReadFull(conn, dataBuf)
 	return
 }
