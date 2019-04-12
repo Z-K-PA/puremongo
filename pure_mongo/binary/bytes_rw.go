@@ -33,6 +33,18 @@ func ReadCString(buf []byte, pos int32) (val string, cstringLen int32, err error
 	return
 }
 
+//写入byte
+func WriteByte(val byte, buf *[]byte, pos int32) (count int32) {
+	if len(*buf) < int(pos)+1 {
+		*buf = append(*buf,val)
+		//扩大buf
+		*buf = (*buf)[:cap(*buf)]
+	}else{
+		(*buf)[pos] = byte(val)
+	}
+	return 1
+}
+
 //写入int32
 func WriteInt32(val int32, buf *[]byte, pos int32) (count int32) {
 	if len(*buf) < int(pos)+4 {

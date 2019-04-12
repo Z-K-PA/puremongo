@@ -3,7 +3,7 @@ package wire_protocol
 import "pure_mongos/pure_mongo/binary"
 
 const (
-	HeaderLen = 16 //MsgLen
+	HeaderLen = 16 //Header length
 )
 
 //request type
@@ -47,4 +47,9 @@ func (h *MsgHeader) Write(buf *[]byte, pos int32) (count int32) {
 	binary.WriteInt32(h.OpCode, buf, pos+12)
 
 	return HeaderLen
+}
+
+//可以序列化的消息(客户端发往服务器)
+type IReqMsg interface {
+	Marshal(buf *[]byte) (count int32, err error)
 }

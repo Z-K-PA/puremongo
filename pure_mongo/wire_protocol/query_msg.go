@@ -59,18 +59,13 @@ func (qMsg *QueryMsg) SetSelector(selector interface{}) {
 
 //序列化
 func (qMsg *QueryMsg) Marshal(buf *[]byte) (count int32, err error) {
-	var docCount int32
-
+	docCount := int32(0)
 	pos := int32(0)
 
 	pos += qMsg.Header.Write(buf, pos)
-
 	pos += binary.WriteInt32(qMsg.Flags, buf, pos)
-
 	pos += binary.WriteCString(qMsg.FullCollName, buf, pos)
-
 	pos += binary.WriteInt32(qMsg.NumToSkip, buf, pos)
-
 	pos += binary.WriteInt32(qMsg.NumToReturn, buf, pos)
 
 	docCount, err = qMsg.Doc.MarshalBuffer(buf, pos)
@@ -81,6 +76,9 @@ func (qMsg *QueryMsg) Marshal(buf *[]byte) (count int32, err error) {
 	pos += docCount
 	if qMsg.Selector != nil {
 		docCount, err = bson.MarshalBsonWithBuffer(qMsg.Selector, buf, pos)
+		if err != nil {
+			return
+		}
 		pos += docCount
 	}
 
