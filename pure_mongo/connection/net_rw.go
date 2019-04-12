@@ -10,6 +10,11 @@ import (
 
 var (
 	ErrConnTimeoutBefore = errors.New("开始连接Mongo服务器前已经超时")
+	ErrConnToMuchData    = errors.New("服务器疯掉，发了过量数据")
+)
+
+const (
+	ReceiveMaxSize = 50 * 1024 * 1024 //50M，很变态的数字了
 )
 
 //连接服务器
@@ -51,29 +56,35 @@ func SendMsg(conn net.Conn, buf []byte, deadline time.Time) (err error) {
 }
 
 //接收消息
-func ReadMsg(conn net.Conn, buf []byte, deadline time.Time) (msgHeader wire_protocol.MsgHeader, rawData []byte, err error) {
+func ReadMsg(conn net.Conn, buf *[]byte, deadline time.Time) (msgHeader wire_protocol.MsgHeader, err error) {
 	//设置超时
 	err = conn.SetDeadline(deadline)
 	if err != nil {
 		return
 	}
 
-	rawData = buf
 	//读取头部
-	headBuf := buf[:wire_protocol.HeaderLen]
+	headBuf := (*buf)[:wire_protocol.HeaderLen]
 	_, err = io.ReadFull(conn, headBuf)
 	if err != nil {
 		return
 	}
 
 	msgHeader.Read(headBuf)
-	if len(rawData) < int(msgHeader.MsgLen) {
-		rawData = make([]byte, msgHeader.MsgLen)
-		//拷贝头
-		copy(rawData, headBuf)
+
+	delta := int(msgHeader.MsgLen) - len(*buf)
+	if delta > ReceiveMaxSize {
+		err = ErrConnToMuchData
+		return
 	}
 
-	dataBuf := rawData[wire_protocol.HeaderLen:]
+	if delta > 0 {
+		*buf = append(*buf, make([]byte, delta)...)
+		//扩大buf
+		*buf = (*buf)[:cap(*buf)]
+	}
+
+	dataBuf := (*buf)[wire_protocol.HeaderLen:int(msgHeader.MsgLen)]
 	_, err = io.ReadFull(conn, dataBuf)
 	return
 }

@@ -12,6 +12,7 @@ var (
 //返回的文档内容
 type ReturnDocList []byte
 
+//读取一个回复的doc
 func readReturnDoc(d ReturnDocList, pos int32) (doc []byte, docSize int32, err error) {
 	lBuf := int32(len(d))
 	if pos == lBuf {
@@ -34,6 +35,7 @@ func readReturnDoc(d ReturnDocList, pos int32) (doc []byte, docSize int32, err e
 	return
 }
 
+//读取回复消息中所以的文档到字节流切片
 func (d ReturnDocList) Parse() (bufList [][]byte, err error) {
 	var doc []byte
 	var docSize int32
@@ -44,11 +46,15 @@ func (d ReturnDocList) Parse() (bufList [][]byte, err error) {
 		if err != nil {
 			return
 		}
+		if doc == nil {
+			return
+		}
 		bufList = append(bufList, doc)
 		pos += docSize
 	}
 }
 
+//回复消息
 type ReplyMsg struct {
 	Header         MsgHeader
 	ResponseFlags  int32
