@@ -26,11 +26,10 @@ func (bc *BsonDoc) ParseFromBuf(buf []byte) (bSize int32, err error) {
 	if lBuf == 0 {
 		return
 	}
-	if lBuf < 4 {
-		err = ErrInvalidBsonDoc
+	bSize, err = binary.ReadInt32(buf, 0)
+	if err != nil {
 		return
 	}
-	bSize = binary.ReadInt32(buf, 0)
 	if bSize > MaxBsonDocSize {
 		err = ErrLargeBsonDoc
 		return

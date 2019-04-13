@@ -1,9 +1,16 @@
 package wire_protocol
 
-import "pure_mongos/pure_mongo/binary"
+import (
+	"errors"
+	"pure_mongos/pure_mongo/binary"
+)
 
 const (
 	HeaderLen = 16 //Header length
+)
+
+var (
+	ErrInvalidMsgFromSrv = errors.New("服务器返回的消息格式出错")
 )
 
 //request type
@@ -32,11 +39,21 @@ type MsgHeader struct {
 }
 
 //读取消息头
-func (h *MsgHeader) Read(buf []byte) {
-	h.MsgLen = binary.ReadInt32(buf, 0)
-	h.ReqId = binary.ReadInt32(buf, 4)
-	h.ResTo = binary.ReadInt32(buf, 8)
-	h.OpCode = binary.ReadInt32(buf, 12)
+func (h *MsgHeader) Read(buf []byte) (err error) {
+	h.MsgLen, err = binary.ReadInt32(buf, 0)
+	if err != nil {
+		return
+	}
+	h.ReqId, err = binary.ReadInt32(buf, 4)
+	if err != nil {
+		return
+	}
+	h.ResTo, err = binary.ReadInt32(buf, 8)
+	if err != nil {
+		return
+	}
+	h.OpCode, err = binary.ReadInt32(buf, 12)
+	return
 }
 
 //写入消息头

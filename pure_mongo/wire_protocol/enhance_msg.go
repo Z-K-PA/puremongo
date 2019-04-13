@@ -6,8 +6,12 @@ import (
 )
 
 const (
-	DocBodyType    = 0
+	//body type
+	DocBodyType = 0
+	//seq doc list type
 	SeqDocListType = 1
+	//Enhance msg头长度 1.如果是body（kind-1byte，bsonDoc-head-4）2.如果是seq doc(kind-1byte,length-4byte)
+	EnhanceMsgHeadSize = HeaderLen + 4 + 1 + 4
 )
 
 //EnhanceMsg消息体中的一种格式块
@@ -126,4 +130,93 @@ func (enMsg *EnhanceMsg) Marshal(buf *[]byte) (count int32, err error) {
 	count = pos
 
 	return
+}
+
+//从字节流中分拣出body和seq doc
+func (enMsg *EnhanceMsg) formBuffer(buf []byte) (count int32, err error) {
+	var kind byte
+	var pos int32
+
+	//没有需要解析的字节流
+	if len(buf) == 0 {
+		return
+	}
+
+	kind, err = binary.ReadByte(buf, 0)
+	if err != nil {
+		return
+	}
+	pos++
+
+	if kind == DocBodyType {
+		//body
+		enMsg.Body.Kind = DocBodyType
+		count, err = enMsg.Body.Doc.ParseFromBuf(buf[pos:])
+		if err != nil {
+			return
+		}
+		count += pos
+		enMsg.Body.setted = true
+		return
+	} else if kind == SeqDocListType {
+		//seq doc list
+		enMsg.SeqDocList.Kind = SeqDocListType
+		enMsg.SeqDocList.Length, err = binary.ReadInt32(buf, pos)
+		if err != nil {
+			return
+		}
+
+		if len(buf[pos:]) < int(enMsg.SeqDocList.Length) {
+			err = ErrInvalidMsgFromSrv
+			return
+		}
+
+		pos += 4
+		enMsg.SeqDocList.Identify, count, err = binary.ReadCString(buf, pos)
+		if err != nil {
+			return
+		}
+		pos += count
+
+		count, err = enMsg.SeqDocList.DocList.ParseFromBuf(buf[pos:])
+		if err != nil {
+			return
+		}
+		count += pos
+		enMsg.SeqDocList.setted = true
+		return
+	} else {
+		err = ErrInvalidMsgFromSrv
+		return
+	}
+}
+
+//从网络数据中生成
+func (enMsg *EnhanceMsg) FromBuffer(header MsgHeader, buf []byte) (err error) {
+	var count int32
+
+	if len(buf) < EnhanceMsgHeadSize {
+		err = ErrInvalidMsgFromSrv
+		return
+	}
+
+	enMsg.Header = header
+	pos := int32(HeaderLen)
+
+	enMsg.Flags, err = binary.ReadInt32(buf, pos)
+	if err != nil {
+		return
+	}
+	pos += 4
+
+	for {
+		count, err = enMsg.formBuffer(buf[pos:])
+		if count == 0 && err == nil {
+			return
+		}
+		if err != nil {
+			return
+		}
+		pos += count
+	}
 }

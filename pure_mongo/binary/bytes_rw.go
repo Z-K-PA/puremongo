@@ -6,25 +6,50 @@ import (
 )
 
 var (
-	ErrReadCString = errors.New("解析CString出错")
+	ErrInvalidBinary = errors.New("错误的二进制格式")
 )
 
+//读取byte
+func ReadByte(buf []byte, pos int32) (val byte, err error) {
+	if len(buf) < int(pos)+1 {
+		err = ErrInvalidBinary
+		return
+	}
+	val = buf[pos]
+	return
+}
+
 //读取int32
-func ReadInt32(buf []byte, pos int32) int32 {
-	return (int32(buf[pos])) | (int32(buf[pos+1]) << 8) | (int32(buf[pos+2]) << 16) | (int32(buf[pos+3]) << 24)
+func ReadInt32(buf []byte, pos int32) (val int32, err error) {
+	if len(buf) < int(pos)+4 {
+		err = ErrInvalidBinary
+		return
+	}
+	val = (int32(buf[pos])) | (int32(buf[pos+1]) << 8) | (int32(buf[pos+2]) << 16) | (int32(buf[pos+3]) << 24)
+	return
 }
 
 //读取int64
-func ReadInt64(buf []byte, pos int32) int64 {
-	return (int64(buf[pos])) | (int64(buf[pos+1]) << 8) | (int64(buf[pos+2]) << 16) | (int64(buf[pos+3]) << 24) |
+func ReadInt64(buf []byte, pos int32) (val int64, err error) {
+	if len(buf) < int(pos)+8 {
+		err = ErrInvalidBinary
+		return
+	}
+	val = (int64(buf[pos])) | (int64(buf[pos+1]) << 8) | (int64(buf[pos+2]) << 16) | (int64(buf[pos+3]) << 24) |
 		(int64(buf[pos+4]) << 32) | (int64(buf[pos+5]) << 40) | (int64(buf[pos+6]) << 48) | (int64(buf[pos+7]) << 56)
+	return
 }
 
 //读取CString
 func ReadCString(buf []byte, pos int32) (val string, cstringLen int32, err error) {
+	if len(buf) < int(pos) + 1{
+		//空串也至少需要一个字节
+		err = ErrInvalidBinary
+	}
+
 	nullPos := bytes.IndexByte(buf[pos:], 0)
 	if nullPos == -1 {
-		err = ErrReadCString
+		err = ErrInvalidBinary
 		return
 	}
 	_nullPos := int32(nullPos)
@@ -36,10 +61,10 @@ func ReadCString(buf []byte, pos int32) (val string, cstringLen int32, err error
 //写入byte
 func WriteByte(val byte, buf *[]byte, pos int32) (count int32) {
 	if len(*buf) < int(pos)+1 {
-		*buf = append(*buf,val)
+		*buf = append(*buf, val)
 		//扩大buf
 		*buf = (*buf)[:cap(*buf)]
-	}else{
+	} else {
 		(*buf)[pos] = byte(val)
 	}
 	return 1
