@@ -13,7 +13,7 @@ func NewInsertOneMessage(db string, collection string, ordered bool, item interf
 		CollectionName: collection,
 		Ordered:        ordered,
 	})
-	enMsg.SetSeqDoc("insert.documents")
+	enMsg.SetSeqDoc("documents")
 	enMsg.AddSeqDoc(item)
 	return enMsg
 }

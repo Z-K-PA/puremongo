@@ -48,10 +48,12 @@ func (sb *SeqDocListBlock) Marshal(buf *[]byte, pos int32) (count int32, err err
 	if !sb.setted {
 		return
 	}
+
+	pos += binary.WriteByte(sb.Kind, buf, pos)
+
 	//回填锚点
 	anchorPos := pos
 
-	pos += binary.WriteByte(sb.Kind, buf, pos)
 	pos += binary.WriteInt32(0, buf, pos)
 	pos += binary.WriteCString(sb.Identify, buf, pos)
 
@@ -64,7 +66,8 @@ func (sb *SeqDocListBlock) Marshal(buf *[]byte, pos int32) (count int32, err err
 		count += _count
 	}
 	//重写length
-	binary.WriteInt32(count, buf, anchorPos+1)
+	binary.WriteInt32(count, buf, anchorPos)
+	count++
 	return
 }
 
@@ -105,6 +108,7 @@ func (enMsg *EnhanceMsg) SetSeqDoc(identify string) {
 //添加消息体中的seq doc
 func (enMsg *EnhanceMsg) AddSeqDoc(val interface{}) {
 	enMsg.SeqDocList.ValList = append(enMsg.SeqDocList.ValList, val)
+	enMsg.SeqDocList.setted = true
 }
 
 //序列化
