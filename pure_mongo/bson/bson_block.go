@@ -3,10 +3,11 @@ package bson
 import (
 	"errors"
 	"pure_mongos/pure_mongo/binary"
+	"reflect"
 )
 
 const (
-	MaxBsonDocSize = 40 * 1024 * 1024 //bson文档最大设定为40M
+	MaxBsonDocSize = 16 * 1024 * 1024 //bson文档最大设定为40M
 )
 
 var (
@@ -46,6 +47,11 @@ func (bc *BsonDoc) ParseFromBuf(buf []byte) (bSize int32, err error) {
 	return
 }
 
+//反序列化
+func (bc *BsonDoc) Unmarshal(val interface{}) (err error) {
+	return UnMarshalBson(bc.Buf, val)
+}
+
 //bson文档列表
 type BsonDocList []BsonDoc
 
@@ -79,5 +85,58 @@ func (bL *BsonDocList) ParseFromBuf(buf []byte) (bSize int32, err error) {
 		bSize += docSize
 	}
 
+	return
+}
+
+//反序列化
+func (bl BsonDocList) Unmarshal(val interface{}) (err error) {
+	docLen := len(bl)
+	if docLen == 0 {
+		return
+	}
+
+	resultv := reflect.ValueOf(val)
+	slicev := resultv.Elem()
+
+	if slicev.Kind() == reflect.Interface {
+		slicev = slicev.Elem()
+	}
+	slicev = slicev.Slice(0, slicev.Cap())
+	elemt := slicev.Type().Elem()
+
+	i := 0
+
+	for i = 0; i < docLen; i++ {
+		if slicev.Len() == i {
+			elemp := reflect.New(elemt)
+			err = UnMarshalBson((bl)[i].Buf, elemp.Interface())
+			if err != nil {
+				return
+			}
+			slicev = reflect.Append(slicev, elemp.Elem())
+			slicev = slicev.Slice(0, slicev.Cap())
+		} else {
+			err = UnMarshalBson((bl)[i].Buf, slicev.Index(i).Addr().Interface())
+			if err != nil {
+				return
+			}
+		}
+	}
+	resultv.Elem().Set(slicev.Slice(0, i))
+	return
+}
+
+//反序列化处理函数
+type UnmarshalDocListHandler func()
+
+//反序列化 -- 带处理函数
+func (bl BsonDocList) UnmarshalWithHandler(handler UnmarshalDocListHandler, val interface{}) (err error) {
+	for _, doc := range bl {
+		err = doc.Unmarshal(val)
+		if err != nil {
+			return
+		}
+		handler()
+	}
 	return
 }

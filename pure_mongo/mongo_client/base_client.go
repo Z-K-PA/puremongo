@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"pure_mongos/pure_mongo/binary"
+	"pure_mongos/pure_mongo/bson"
 	"pure_mongos/pure_mongo/wire_protocol"
 	"sync"
 )
@@ -70,7 +71,7 @@ func newMongoClient(conn net.Conn, sessionId uuid.UUID) *BaseMongoClient {
 }
 
 //拨号连接
-func dialMongoClient(ctx context.Context, dialer *net.Dialer, url string) (cli *BaseMongoClient, err error) {
+func DialMongoClient(ctx context.Context, dialer *net.Dialer, url string) (cli *BaseMongoClient, err error) {
 	var conn net.Conn
 	var sessionId uuid.UUID
 
@@ -399,70 +400,142 @@ func (cli *BaseMongoClient) sendQueryBufRecvReply(ctx context.Context, buf []byt
 }
 
 //处理查询消息
-func (cli *BaseMongoClient) queryWithHandler(ctx context.Context,
-	qMsg *wire_protocol.QueryMsg, handler wire_protocol.HandleBsonDoc) (err error) {
-	var rMsg *wire_protocol.ReplyMsg
+func (cli *BaseMongoClient) Query(
+	ctx context.Context,
+	qMsg *wire_protocol.QueryMsg,
+	rspVal interface{}) (err error) {
 
+	var rMsg *wire_protocol.ReplyMsg
 	rMsg, err = cli.sendQueryRecvReply(ctx, qMsg)
 	if err != nil {
 		return
 	}
-	for _, doc := range rMsg.Documents {
-		err = handler(doc)
-		if err != nil {
-			cli.badSmell = true
-			return
-		}
+	err = rMsg.Documents.Unmarshal(rspVal)
+	if err != nil {
+		cli.badSmell = true
+		return
 	}
 	return
 }
 
 //处理查询消息
-func (cli *BaseMongoClient) queryBufWithHandler(ctx context.Context,
-	buf []byte, handler wire_protocol.HandleBsonDoc) (err error) {
-	var rMsg *wire_protocol.ReplyMsg
+func (cli *BaseMongoClient) QueryBuf(
+	ctx context.Context,
+	buf []byte,
+	rspVal interface{}) (err error) {
 
+	var rMsg *wire_protocol.ReplyMsg
 	rMsg, err = cli.sendQueryBufRecvReply(ctx, buf)
 	if err != nil {
 		return
 	}
-	for _, doc := range rMsg.Documents {
-		err = handler(doc)
-		if err != nil {
-			cli.badSmell = true
-			return
-		}
+	err = rMsg.Documents.Unmarshal(rspVal)
+	if err != nil {
+		cli.badSmell = true
+		return
 	}
 	return
 }
 
 //处理enhance消息
-func (cli *BaseMongoClient) enhanceMsgWithHandler(ctx context.Context,
+func (cli *BaseMongoClient) EnhanceMsg(
+	ctx context.Context,
 	inMsg *wire_protocol.EnhanceMsg,
-	bodyHandler wire_protocol.HandleBsonDoc,
-	seqDocHandler wire_protocol.HandleBsonDoc) (err error) {
-	var outMsg *wire_protocol.EnhanceMsg
+	bodyRspVal interface{},
+	seqDocListVal interface{}) (err error) {
 
+	var outMsg *wire_protocol.EnhanceMsg
 	outMsg, err = cli.enhanceSendMsgRecvMsg(ctx, inMsg)
 	if err != nil {
 		return
 	}
 
-	if bodyHandler != nil {
-		err = bodyHandler(outMsg.Body.Doc)
+	if bodyRspVal != nil {
+		err = outMsg.Body.Doc.Unmarshal(bodyRspVal)
 		if err != nil {
 			cli.badSmell = true
 			return
 		}
 	}
 
-	if seqDocHandler != nil {
-		for _, doc := range outMsg.SeqDocList.DocList {
-			err = seqDocHandler(doc)
-			if err != nil {
-				cli.badSmell = true
-				return
-			}
+	if seqDocListVal != nil {
+		err = outMsg.SeqDocList.DocList.Unmarshal(seqDocListVal)
+		if err != nil {
+			cli.badSmell = true
+			return
+		}
+	}
+
+	return
+}
+
+//处理查询消息-带handler
+func (cli *BaseMongoClient) QueryWithHandler(
+	ctx context.Context,
+	qMsg *wire_protocol.QueryMsg,
+	rspHandler bson.UnmarshalDocListHandler,
+	rspVal interface{}) (err error) {
+
+	var rMsg *wire_protocol.ReplyMsg
+	rMsg, err = cli.sendQueryRecvReply(ctx, qMsg)
+	if err != nil {
+		return
+	}
+	err = rMsg.Documents.UnmarshalWithHandler(rspHandler, rspVal)
+	if err != nil {
+		cli.badSmell = true
+		return
+	}
+	return
+}
+
+//处理查询消息-带handler
+func (cli *BaseMongoClient) QueryBufWithHandler(
+	ctx context.Context,
+	buf []byte,
+	rspHandler bson.UnmarshalDocListHandler,
+	rspVal interface{}) (err error) {
+
+	var rMsg *wire_protocol.ReplyMsg
+	rMsg, err = cli.sendQueryBufRecvReply(ctx, buf)
+	if err != nil {
+		return
+	}
+	err = rMsg.Documents.UnmarshalWithHandler(rspHandler, rspVal)
+	if err != nil {
+		cli.badSmell = true
+		return
+	}
+	return
+}
+
+//处理enhance消息-带handler
+func (cli *BaseMongoClient) EnhanceMsgWithHandler(
+	ctx context.Context,
+	inMsg *wire_protocol.EnhanceMsg,
+	bodyRspVal interface{},
+	seqDocListHandler bson.UnmarshalDocListHandler,
+	seqDocListVal interface{}) (err error) {
+
+	var outMsg *wire_protocol.EnhanceMsg
+	outMsg, err = cli.enhanceSendMsgRecvMsg(ctx, inMsg)
+	if err != nil {
+		return
+	}
+
+	if bodyRspVal != nil {
+		err = outMsg.Body.Doc.Unmarshal(bodyRspVal)
+		if err != nil {
+			cli.badSmell = true
+			return
+		}
+	}
+
+	if seqDocListHandler != nil && seqDocListVal != nil {
+		err = outMsg.SeqDocList.DocList.UnmarshalWithHandler(seqDocListHandler, seqDocListVal)
+		if err != nil {
+			cli.badSmell = true
+			return
 		}
 	}
 

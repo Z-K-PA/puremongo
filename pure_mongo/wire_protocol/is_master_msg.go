@@ -6,31 +6,17 @@ import (
 )
 
 //固定格式的消息
-
-var queryMetaMsg *QueryMsg
-
-func init() {
-	queryMetaMsg = NewQueryMsg()
-	//设置为系统表
-	queryMetaMsg.FullCollName = "admin.$cmd"
-	//什么查询flag都不用设置
-	queryMetaMsg.Flags = 0
-	//返回值填-1
-	queryMetaMsg.NumToReturn = -1
-	//
-}
-
 var (
-	QueryMetaBuffer []byte
+	IsMasterMsgBuf []byte
 )
 
-func InitQueryMetaBuffer() {
-	if QueryMetaBuffer == nil {
-		QueryMetaBuffer = initQueryMetaBuffer()
+func InitIsMasterBuffer() {
+	if IsMasterMsgBuf == nil {
+		IsMasterMsgBuf = initIsMasterMsgBuffer()
 	}
 }
 
-func initQueryMetaBuffer() []byte {
+func initIsMasterMsgBuffer() []byte {
 	var queryMetaBuf []byte
 
 	queryMetaMsg := NewQueryMsg()
