@@ -3,12 +3,11 @@ package bson
 import (
 	"errors"
 	"pure_mongos/pure_mongo/binary"
+	"pure_mongos/pure_mongo/limit"
 	"reflect"
 )
 
-const (
-	MaxBsonDocSize = 16 * 1024 * 1024 //bson文档最大设定为40M
-)
+
 
 var (
 	ErrInvalidBsonDoc = errors.New("bson文档内容出错")
@@ -31,7 +30,7 @@ func (bc *BsonDoc) ParseFromBuf(buf []byte) (bSize int32, err error) {
 	if err != nil {
 		return
 	}
-	if bSize > MaxBsonDocSize {
+	if bSize > limit.MaxBsonDocSize {
 		err = ErrLargeBsonDoc
 		return
 	}
@@ -63,7 +62,7 @@ func (bL *BsonDocList) ParseFromBuf(buf []byte) (bSize int32, err error) {
 	docSize := int32(0)
 
 	lBuf := len(buf)
-	if lBuf > MaxBsonDocSize {
+	if lBuf > limit.MaxBsonDocSize {
 		err = ErrLargeBsonDoc
 		return
 	}

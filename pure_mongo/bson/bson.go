@@ -17,7 +17,7 @@ type DocPair struct {
 
 //文档接口
 type IDoc interface {
-	MarshalBuffer(buf *[]byte, pos int32) (docLen int32, err error)
+	MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error)
 	AddDoc(docPairs ...DocPair)
 }
 

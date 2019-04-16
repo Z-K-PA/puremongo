@@ -8,6 +8,7 @@ import (
 	"net"
 	"pure_mongos/pure_mongo/binary"
 	"pure_mongos/pure_mongo/bson"
+	"pure_mongos/pure_mongo/limit"
 	"pure_mongos/pure_mongo/wire_protocol"
 	"sync"
 )
@@ -24,11 +25,6 @@ const (
 	ClientBufferInitSize = 1024 * 1024
 	//在每个回合结束后来查看client buffer大小，如果大于8M就重置为1M
 	ClientBufferLimitSize = 8 * 1024 * 1024
-
-	//一个回合中连接最多的接收数据大小
-	ClientReceiveMaxSize = 40 * 1024 * 1024 //40M，很变态的数字了
-	//一个回合中连接最多的发送数据大小
-	ClientSendMaxSize = 40 * 1024 * 1024
 )
 
 var (
@@ -37,7 +33,7 @@ var (
 )
 
 //Mongo客户端
-type BaseMongoClient struct {
+type MongoClient struct {
 	//连接
 	conn net.Conn
 	//缓存
@@ -61,8 +57,8 @@ type BaseMongoClient struct {
 }
 
 //新建连接
-func newMongoClient(conn net.Conn, sessionId uuid.UUID) *BaseMongoClient {
-	cli := &BaseMongoClient{
+func newMongoClient(conn net.Conn, sessionId uuid.UUID) *MongoClient {
+	cli := &MongoClient{
 		conn:      conn,
 		buffer:    make([]byte, ClientBufferInitSize),
 		sessionId: sessionId,
@@ -71,7 +67,7 @@ func newMongoClient(conn net.Conn, sessionId uuid.UUID) *BaseMongoClient {
 }
 
 //拨号连接
-func DialMongoClient(ctx context.Context, dialer *net.Dialer, url string) (cli *BaseMongoClient, err error) {
+func DialMongoClient(ctx context.Context, dialer *net.Dialer, url string) (cli *MongoClient, err error) {
 	var conn net.Conn
 	var sessionId uuid.UUID
 
@@ -96,7 +92,7 @@ func DialMongoClient(ctx context.Context, dialer *net.Dialer, url string) (cli *
 }
 
 //关闭
-func (cli *BaseMongoClient) Close() (err error) {
+func (cli *MongoClient) Close() (err error) {
 	cli.closeLock.Lock()
 	if cli.closed {
 		cli.closeLock.Unlock()
@@ -108,7 +104,7 @@ func (cli *BaseMongoClient) Close() (err error) {
 }
 
 //是否关闭
-func (cli *BaseMongoClient) IsClosed() (closed bool) {
+func (cli *MongoClient) IsClosed() (closed bool) {
 	cli.closeLock.Lock()
 	closed = cli.closed
 	cli.closeLock.Unlock()
@@ -116,17 +112,17 @@ func (cli *BaseMongoClient) IsClosed() (closed bool) {
 }
 
 //是否可以继续使用
-func (cli *BaseMongoClient) HasBadSmell() bool {
+func (cli *MongoClient) HasBadSmell() bool {
 	return cli.badSmell
 }
 
 //此连接是否使用过
-func (cli *BaseMongoClient) HasUsed() bool {
+func (cli *MongoClient) HasUsed() bool {
 	return cli.used
 }
 
 //重置缓冲区
-func (cli *BaseMongoClient) ResetBuffer() {
+func (cli *MongoClient) ResetBuffer() {
 	l := len(cli.buffer)
 
 	if l == 0 || l > ClientBufferLimitSize {
@@ -135,7 +131,7 @@ func (cli *BaseMongoClient) ResetBuffer() {
 }
 
 //超时设置
-func (cli *BaseMongoClient) setDeadline(ctx context.Context) (err error) {
+func (cli *MongoClient) setDeadline(ctx context.Context) (err error) {
 	deadLine, ok := ctx.Deadline()
 	if ok {
 		//带超时 -- 直接设置超时，如果超时时间已经超过当前时间，也不用管，net.Conn => Read/Write会处理好这种情况
@@ -145,7 +141,7 @@ func (cli *BaseMongoClient) setDeadline(ctx context.Context) (err error) {
 }
 
 //发送字节流
-func (cli *BaseMongoClient) _sendBuff(ctx context.Context, buf []byte) (err error) {
+func (cli *MongoClient) _sendBuff(ctx context.Context, buf []byte) (err error) {
 	size := len(buf)
 	writeSize := 0
 	index := 0
@@ -172,8 +168,8 @@ func (cli *BaseMongoClient) _sendBuff(ctx context.Context, buf []byte) (err erro
 }
 
 //发送字节流
-func (cli *BaseMongoClient) sendBuf(ctx context.Context, count int32) (reqId int32, err error) {
-	if count > ClientSendMaxSize {
+func (cli *MongoClient) sendBuf(ctx context.Context, count int32) (reqId int32, err error) {
+	if count > limit.ClientSendMaxSize {
 		err = ErrSendDataTooLarge
 		return
 	}
@@ -197,7 +193,7 @@ func (cli *BaseMongoClient) sendBuf(ctx context.Context, count int32) (reqId int
 }
 
 //接收字节流
-func (cli *BaseMongoClient) readBuf(ctx context.Context) (err error) {
+func (cli *MongoClient) readBuf(ctx context.Context) (err error) {
 	select {
 	case <-ctx.Done():
 		//显式关闭连接
@@ -214,7 +210,7 @@ func (cli *BaseMongoClient) readBuf(ctx context.Context) (err error) {
 		return
 	}
 	cli.msgHeader.Read(headBuf)
-	if cli.msgHeader.MsgLen > ClientReceiveMaxSize {
+	if cli.msgHeader.MsgLen > limit.ClientReceiveMaxSize {
 		err = ErrRevDataTooLarge
 		return
 	}
@@ -240,7 +236,7 @@ func (cli *BaseMongoClient) readBuf(ctx context.Context) (err error) {
 }
 
 //发送字节流后接收字节流
-func (cli *BaseMongoClient) sendAndRecv(ctx context.Context, count int32) (err error) {
+func (cli *MongoClient) sendAndRecv(ctx context.Context, count int32) (err error) {
 	reqId := int32(0)
 
 	//设置connection超时
@@ -274,15 +270,15 @@ func (cli *BaseMongoClient) sendAndRecv(ctx context.Context, count int32) (err e
 }
 
 //发送一个query,接收一个reply
-func (cli *BaseMongoClient) sendQueryRecvReply(ctx context.Context, qMsg *wire_protocol.QueryMsg) (
+func (cli *MongoClient) sendQueryRecvReply(ctx context.Context, qMsg *wire_protocol.QueryMsg) (
 	rMsg *wire_protocol.ReplyMsg, err error) {
 	count := int32(0)
 	//先序列化，如果序列化出错，返回，但连接还可以用
-	count, err = qMsg.Marshal(&cli.buffer)
+	count, err = qMsg.MarshalBsonWithBuffer(&cli.buffer)
 	if err != nil {
 		return
 	}
-	if count > ClientSendMaxSize {
+	if count > limit.ClientSendMaxSize {
 		err = ErrSendDataTooLarge
 		return
 	}
@@ -300,15 +296,15 @@ func (cli *BaseMongoClient) sendQueryRecvReply(ctx context.Context, qMsg *wire_p
 }
 
 //发送一个enhance msg,接收一个enhance msg
-func (cli *BaseMongoClient) enhanceSendMsgRecvMsg(ctx context.Context, inMsg *wire_protocol.EnhanceMsg) (
+func (cli *MongoClient) enhanceSendMsgRecvMsg(ctx context.Context, inMsg *wire_protocol.EnhanceMsg) (
 	outMsg *wire_protocol.EnhanceMsg, err error) {
 	count := int32(0)
 	//先序列化，如果序列化出错，返回，但连接还可以用
-	count, err = inMsg.Marshal(&cli.buffer)
+	count, err = inMsg.MarshalBsonWithBuffer(&cli.buffer)
 	if err != nil {
 		return
 	}
-	if count > ClientSendMaxSize {
+	if count > limit.ClientSendMaxSize {
 		err = ErrSendDataTooLarge
 		return
 	}
@@ -326,7 +322,7 @@ func (cli *BaseMongoClient) enhanceSendMsgRecvMsg(ctx context.Context, inMsg *wi
 }
 
 //发送传入的字节流
-func (cli *BaseMongoClient) sendSpecBuf(ctx context.Context, buf []byte) (reqId int32, err error) {
+func (cli *MongoClient) sendSpecBuf(ctx context.Context, buf []byte) (reqId int32, err error) {
 	count := int32(len(buf))
 	select {
 	case <-ctx.Done():
@@ -337,7 +333,7 @@ func (cli *BaseMongoClient) sendSpecBuf(ctx context.Context, buf []byte) (reqId 
 	default:
 	}
 
-	if count > ClientSendMaxSize {
+	if count > limit.ClientSendMaxSize {
 		err = ErrSendDataTooLarge
 		return
 	}
@@ -352,7 +348,7 @@ func (cli *BaseMongoClient) sendSpecBuf(ctx context.Context, buf []byte) (reqId 
 }
 
 //发送字节流后接收字节流
-func (cli *BaseMongoClient) sendSpecBufAndRecv(ctx context.Context, buf []byte) (err error) {
+func (cli *MongoClient) sendSpecBufAndRecv(ctx context.Context, buf []byte) (err error) {
 	reqId := int32(0)
 
 	//设置connection超时
@@ -386,7 +382,7 @@ func (cli *BaseMongoClient) sendSpecBufAndRecv(ctx context.Context, buf []byte) 
 }
 
 //发送固定字节流,接收一个reply
-func (cli *BaseMongoClient) sendQueryBufRecvReply(ctx context.Context, buf []byte) (
+func (cli *MongoClient) sendQueryBufRecvReply(ctx context.Context, buf []byte) (
 	rMsg *wire_protocol.ReplyMsg, err error) {
 	err = cli.sendSpecBufAndRecv(ctx, buf)
 	if err != nil {
@@ -400,7 +396,7 @@ func (cli *BaseMongoClient) sendQueryBufRecvReply(ctx context.Context, buf []byt
 }
 
 //处理查询消息
-func (cli *BaseMongoClient) Query(
+func (cli *MongoClient) query(
 	ctx context.Context,
 	qMsg *wire_protocol.QueryMsg,
 	rspVal interface{}) (err error) {
@@ -419,7 +415,7 @@ func (cli *BaseMongoClient) Query(
 }
 
 //处理查询消息
-func (cli *BaseMongoClient) QueryBuf(
+func (cli *MongoClient) queryBuf(
 	ctx context.Context,
 	buf []byte,
 	rspVal interface{}) (err error) {
@@ -438,7 +434,7 @@ func (cli *BaseMongoClient) QueryBuf(
 }
 
 //处理enhance消息
-func (cli *BaseMongoClient) EnhanceMsg(
+func (cli *MongoClient) enhanceMsg(
 	ctx context.Context,
 	inMsg *wire_protocol.EnhanceMsg,
 	bodyRspVal interface{},
@@ -470,7 +466,7 @@ func (cli *BaseMongoClient) EnhanceMsg(
 }
 
 //处理查询消息-带handler
-func (cli *BaseMongoClient) QueryWithHandler(
+func (cli *MongoClient) queryWithHandler(
 	ctx context.Context,
 	qMsg *wire_protocol.QueryMsg,
 	rspHandler bson.UnmarshalDocListHandler,
@@ -490,7 +486,7 @@ func (cli *BaseMongoClient) QueryWithHandler(
 }
 
 //处理查询消息-带handler
-func (cli *BaseMongoClient) QueryBufWithHandler(
+func (cli *MongoClient) queryBufWithHandler(
 	ctx context.Context,
 	buf []byte,
 	rspHandler bson.UnmarshalDocListHandler,
@@ -510,7 +506,7 @@ func (cli *BaseMongoClient) QueryBufWithHandler(
 }
 
 //处理enhance消息-带handler
-func (cli *BaseMongoClient) EnhanceMsgWithHandler(
+func (cli *MongoClient) enhanceMsgWithHandler(
 	ctx context.Context,
 	inMsg *wire_protocol.EnhanceMsg,
 	bodyRspVal interface{},

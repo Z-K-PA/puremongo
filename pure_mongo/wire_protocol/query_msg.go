@@ -58,7 +58,7 @@ func (qMsg *QueryMsg) SetSelector(selector interface{}) {
 }
 
 //序列化
-func (qMsg *QueryMsg) Marshal(buf *[]byte) (count int32, err error) {
+func (qMsg *QueryMsg) MarshalBsonWithBuffer(buf *[]byte) (count int32, err error) {
 	docCount := int32(0)
 	pos := int32(0)
 
@@ -68,7 +68,7 @@ func (qMsg *QueryMsg) Marshal(buf *[]byte) (count int32, err error) {
 	pos += binary.WriteInt32(qMsg.NumToSkip, buf, pos)
 	pos += binary.WriteInt32(qMsg.NumToReturn, buf, pos)
 
-	docCount, err = qMsg.Doc.MarshalBuffer(buf, pos)
+	docCount, err = qMsg.Doc.MarshalBsonWithBuffer(buf, pos)
 	if err != nil {
 		return
 	}

@@ -43,7 +43,7 @@ func initIsMasterMsgBuffer() []byte {
 		},
 	)
 
-	count, err := queryMetaMsg.Marshal(&queryMetaBuf)
+	count, err := queryMetaMsg.MarshalBsonWithBuffer(&queryMetaBuf)
 	if err != nil {
 		panic(err)
 	}

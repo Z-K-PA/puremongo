@@ -23,7 +23,7 @@ type BodyBlock struct {
 }
 
 //序列化
-func (b *BodyBlock) Marshal(buf *[]byte, pos int32) (count int32, err error) {
+func (b *BodyBlock) MarshalBsonWithBuffer(buf *[]byte, pos int32) (count int32, err error) {
 	if !b.setted {
 		return
 	}
@@ -44,7 +44,7 @@ type SeqDocListBlock struct {
 }
 
 //序列化
-func (sb *SeqDocListBlock) Marshal(buf *[]byte, pos int32) (count int32, err error) {
+func (sb *SeqDocListBlock) MarshalBsonWithBuffer(buf *[]byte, pos int32) (count int32, err error) {
 	if !sb.setted {
 		return
 	}
@@ -108,11 +108,10 @@ func (enMsg *EnhanceMsg) SetSeqDoc(identify string) {
 //添加消息体中的seq doc
 func (enMsg *EnhanceMsg) AddSeqDoc(val interface{}) {
 	enMsg.SeqDocList.ValList = append(enMsg.SeqDocList.ValList, val)
-	enMsg.SeqDocList.setted = true
 }
 
 //序列化
-func (enMsg *EnhanceMsg) Marshal(buf *[]byte) (count int32, err error) {
+func (enMsg *EnhanceMsg) MarshalBsonWithBuffer(buf *[]byte) (count int32, err error) {
 	pos := int32(0)
 	bobyDocSize := int32(0)
 	seqDocSize := int32(0)
@@ -120,13 +119,13 @@ func (enMsg *EnhanceMsg) Marshal(buf *[]byte) (count int32, err error) {
 	pos += enMsg.Header.Write(buf, pos)
 	pos += binary.WriteInt32(enMsg.Flags, buf, pos)
 
-	bobyDocSize, err = enMsg.Body.Marshal(buf, pos)
+	bobyDocSize, err = enMsg.Body.MarshalBsonWithBuffer(buf, pos)
 	if err != nil {
 		return
 	}
 	pos += bobyDocSize
 
-	seqDocSize, err = enMsg.SeqDocList.Marshal(buf, pos)
+	seqDocSize, err = enMsg.SeqDocList.MarshalBsonWithBuffer(buf, pos)
 	if err != nil {
 		return
 	}

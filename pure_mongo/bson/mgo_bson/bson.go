@@ -29,7 +29,7 @@ func marshalBsonWithBuffer(in interface{}, buf *[]byte, pos int32) (bsonLen int3
 	return
 }
 
-func (d *MgoDoc) MarshalBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
+func (d *MgoDoc) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
 	return marshalBsonWithBuffer(d.D, buf, pos)
 }
 

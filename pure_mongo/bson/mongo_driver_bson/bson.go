@@ -30,7 +30,7 @@ type DriverDoc struct {
 	driver_bsonx.Doc
 }
 
-func (d *DriverDoc) MarshalBuffer(buf *[]byte, pos int32) (bsonLen int32, err error) {
+func (d *DriverDoc) MarshalBsonWithBuffer(buf *[]byte, pos int32) (bsonLen int32, err error) {
 	var out []byte
 
 	out, err = d.Doc.AppendMarshalBSON((*buf)[pos:pos])
