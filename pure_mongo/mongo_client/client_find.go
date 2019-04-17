@@ -15,14 +15,15 @@ var (
 
 type MongoFindClient struct {
 	*MongoClient
-	options  wire_protocol.FindOption //查询参数
-	cursorId int64                    //对应的服务器游标
+	options  *wire_protocol.FindOption //查询参数
+	cursorId int64                     //对应的服务器游标
 }
 
 //做个包装 -- db, collection, filter (此3项必填)
 func (cli *MongoClient) Find(db string, collection string, filter map[string]interface{}) *MongoFindClient {
 	findCli := &MongoFindClient{
 		MongoClient: cli,
+		options:     &wire_protocol.FindOption{},
 	}
 	findCli.options.Db = db
 	findCli.options.CollectionName = collection

@@ -32,7 +32,7 @@ func (b *BodyBlock) MarshalBsonWithBuffer(buf *[]byte, pos int32) (count int32, 
 	pos += binary.WriteByte(b.Kind, buf, pos)
 	switch b.Val.(type) {
 	case bson.IMarshalBsonWithBuffer:
-		iDoc := b.Val.(bson.IDoc)
+		iDoc := b.Val.(bson.IMarshalBsonWithBuffer)
 		count, err = iDoc.MarshalBsonWithBuffer(buf, pos)
 	default:
 		count, err = bson.MarshalBsonWithBuffer(b.Val, buf, pos)
