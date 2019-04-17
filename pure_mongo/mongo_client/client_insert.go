@@ -21,7 +21,7 @@ func (cli *MongoClient) InsertOne(
 
 	insertResult = &wire_protocol.InsertResult{}
 	inMsg := wire_protocol.NewInsertOneMessage(db, collection, true, val)
-	err = cli.enhanceMsg(ctx, inMsg, insertResult, nil)
+	err = cli.runAPIMsg(ctx, inMsg, insertResult, nil)
 	if err != nil {
 		return
 	}
@@ -44,14 +44,14 @@ func (cli *MongoClient) InsertMany(
 	insertResult *wire_protocol.InsertResult,
 	err error) {
 
-	var inMsg *wire_protocol.EnhanceMsg
+	var inMsg *wire_protocol.APIMsg
 	insertResult = &wire_protocol.InsertResult{}
 	inMsg, err = wire_protocol.NewInsertManyMessage(db, collection, ordered, val)
 	if err != nil {
 		return
 	}
 
-	err = cli.enhanceMsg(ctx, inMsg, insertResult, nil)
+	err = cli.runAPIMsg(ctx, inMsg, insertResult, nil)
 	if err != nil {
 		return
 	}
@@ -74,11 +74,11 @@ func (cli *MongoClient) InsertManyI(
 	insertResult *wire_protocol.InsertResult,
 	err error) {
 
-	var inMsg *wire_protocol.EnhanceMsg
+	var inMsg *wire_protocol.APIMsg
 	insertResult = &wire_protocol.InsertResult{}
 	inMsg = wire_protocol.NewInsertManyMessageI(db, collection, ordered, val)
 
-	err = cli.enhanceMsg(ctx, inMsg, insertResult, nil)
+	err = cli.runAPIMsg(ctx, inMsg, insertResult, nil)
 	if err != nil {
 		return
 	}

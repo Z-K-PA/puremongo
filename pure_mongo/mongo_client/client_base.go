@@ -98,6 +98,7 @@ func (cli *MongoClient) Close() (err error) {
 		cli.closeLock.Unlock()
 		return
 	}
+	cli.closed = true
 	err = cli.conn.Close()
 	cli.closeLock.Unlock()
 	return
@@ -295,9 +296,9 @@ func (cli *MongoClient) sendQueryRecvReply(ctx context.Context, qMsg *wire_proto
 	return
 }
 
-//发送一个enhance msg,接收一个enhance msg
-func (cli *MongoClient) enhanceSendMsgRecvMsg(ctx context.Context, inMsg *wire_protocol.EnhanceMsg) (
-	outMsg *wire_protocol.EnhanceMsg, err error) {
+//发送一个API msg,接收一个API msg
+func (cli *MongoClient) sendAPIMsgeRecvAPIMsg(ctx context.Context, inMsg *wire_protocol.APIMsg) (
+	outMsg *wire_protocol.APIMsg, err error) {
 	count := int32(0)
 	//先序列化，如果序列化出错，返回，但连接还可以用
 	count, err = inMsg.MarshalBsonWithBuffer(&cli.buffer)
@@ -314,7 +315,7 @@ func (cli *MongoClient) enhanceSendMsgRecvMsg(ctx context.Context, inMsg *wire_p
 		return
 	}
 
-	outMsg, err = wire_protocol.ParseEnhanceMsg(cli.msgHeader, cli.buffer[:cli.msgHeader.MsgLen])
+	outMsg, err = wire_protocol.ParseAPIMsg(cli.msgHeader, cli.buffer[:cli.msgHeader.MsgLen])
 	if err != nil {
 		cli.badSmell = true
 	}
@@ -433,15 +434,15 @@ func (cli *MongoClient) queryBuf(
 	return
 }
 
-//处理enhance消息
-func (cli *MongoClient) enhanceMsg(
+//处理api msg消息
+func (cli *MongoClient) runAPIMsg(
 	ctx context.Context,
-	inMsg *wire_protocol.EnhanceMsg,
+	inMsg *wire_protocol.APIMsg,
 	bodyRspVal interface{},
 	seqDocListVal interface{}) (err error) {
 
-	var outMsg *wire_protocol.EnhanceMsg
-	outMsg, err = cli.enhanceSendMsgRecvMsg(ctx, inMsg)
+	var outMsg *wire_protocol.APIMsg
+	outMsg, err = cli.sendAPIMsgeRecvAPIMsg(ctx, inMsg)
 	if err != nil {
 		return
 	}
@@ -505,16 +506,17 @@ func (cli *MongoClient) queryBufWithHandler(
 	return
 }
 
-//处理enhance消息-带handler
-func (cli *MongoClient) enhanceMsgWithHandler(
+/* 暂时用不上，先注释
+//处理API消息-带handler
+func (cli *MongoClient) runAPIMsgWithHandler(
 	ctx context.Context,
-	inMsg *wire_protocol.EnhanceMsg,
+	inMsg *wire_protocol.APIMsg,
 	bodyRspVal interface{},
 	seqDocListHandler bson.UnmarshalDocListHandler,
 	seqDocListVal interface{}) (err error) {
 
-	var outMsg *wire_protocol.EnhanceMsg
-	outMsg, err = cli.enhanceSendMsgRecvMsg(ctx, inMsg)
+	var outMsg *wire_protocol.APIMsg
+	outMsg, err = cli.sendAPIMsgeRecvAPIMsg(ctx, inMsg)
 	if err != nil {
 		return
 	}
@@ -529,6 +531,30 @@ func (cli *MongoClient) enhanceMsgWithHandler(
 
 	if seqDocListHandler != nil && seqDocListVal != nil {
 		err = outMsg.SeqDocList.DocList.UnmarshalWithHandler(seqDocListHandler, seqDocListVal)
+		if err != nil {
+			cli.badSmell = true
+			return
+		}
+	}
+
+	return
+}
+*/
+
+//处理API消息-带 binary handler
+func (cli *MongoClient) RunAPIMsgWithBodyBinaryHandler(
+	ctx context.Context,
+	inMsg *wire_protocol.APIMsg,
+	bodyBinaryHandler bson.HandleBsonDocFunc) (err error) {
+
+	var outMsg *wire_protocol.APIMsg
+	outMsg, err = cli.sendAPIMsgeRecvAPIMsg(ctx, inMsg)
+	if err != nil {
+		return
+	}
+
+	if bodyBinaryHandler != nil {
+		err = bodyBinaryHandler(outMsg.Body.Doc.Buf)
 		if err != nil {
 			cli.badSmell = true
 			return

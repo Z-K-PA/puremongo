@@ -17,8 +17,8 @@ type InsertMeta struct {
 }
 
 //新建插入单条内容的消息
-func NewInsertOneMessage(db string, collection string, ordered bool, item interface{}) *EnhanceMsg {
-	enMsg := NewEnhanceMsg()
+func NewInsertOneMessage(db string, collection string, ordered bool, item interface{}) *APIMsg {
+	enMsg := NewAPIMsg()
 	enMsg.SetBodyDoc(InsertMeta{
 		Db:             db,
 		CollectionName: collection,
@@ -31,7 +31,7 @@ func NewInsertOneMessage(db string, collection string, ordered bool, item interf
 
 //新建插入多条内容的消息
 func NewInsertManyMessage(db string, collection string, ordered bool, items interface{}) (
-	enMsg *EnhanceMsg, err error) {
+	enMsg *APIMsg, err error) {
 
 	switch reflect.TypeOf(items).Kind() {
 	case reflect.Slice:
@@ -40,7 +40,7 @@ func NewInsertManyMessage(db string, collection string, ordered bool, items inte
 		return
 	}
 
-	enMsg = NewEnhanceMsg()
+	enMsg = NewAPIMsg()
 	enMsg.SetBodyDoc(InsertMeta{
 		Db:             db,
 		CollectionName: collection,
@@ -58,9 +58,9 @@ func NewInsertManyMessage(db string, collection string, ordered bool, items inte
 }
 
 //新建插入多条内容的消息
-func NewInsertManyMessageI(db string, collection string, ordered bool, items []interface{}) *EnhanceMsg {
+func NewInsertManyMessageI(db string, collection string, ordered bool, items []interface{}) *APIMsg {
 
-	enMsg := NewEnhanceMsg()
+	enMsg := NewAPIMsg()
 	enMsg.SetBodyDoc(InsertMeta{
 		Db:             db,
 		CollectionName: collection,
@@ -101,22 +101,9 @@ func (wL WriteErrList) AllIsDuplicateErr() bool {
 	return true
 }
 
-//插入数据的返回值
-type InsertCode struct {
-	//服务器是否执行插入消息
-	//0-消息格式有问题，服务器不执行
-	//1-服务器执行了插入消息，但不代表插入成功，结果需要检查Number和WriteErrors
-	OK int `bson:"ok"`
-	//插入消息出错的错误码
-	Code int `bson:"code"`
-	//插入消息出错的错误码名称
-	CodeName string `bson:"codeName"`
-	//插入消息出错的错误原因
-	ErrMsg string `bson:"errmsg"`
-}
-
 type InsertResult struct {
-	InsertCode `bson:",inline"`
+	//指令本身相关的返回信息
+	APIMsgRspCode `bson:",inline"`
 	//插入消息的条数
 	Number int `bson:"n"`
 	//插入数据如果不成功，不成功的原因可以在WriteErrorList中查找

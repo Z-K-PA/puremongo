@@ -1,13 +1,13 @@
 package wire_protocol
 
-//解析EnhanceMsg
-func ParseEnhanceMsg(header MsgHeader, buf []byte) (eMsg *EnhanceMsg, err error) {
+//解析API Msg
+func ParseAPIMsg(header MsgHeader, buf []byte) (eMsg *APIMsg, err error) {
 	if header.OpCode != OpMsg {
 		err = ErrInvalidMsgFromSrv
 		return
 	}
 
-	eMsg = &EnhanceMsg{}
+	eMsg = &APIMsg{}
 	err = eMsg.FromBuffer(header, buf)
 	return
 }
@@ -22,4 +22,3 @@ func ParseReplyMsg(header MsgHeader, buf []byte) (qMsg *ReplyMsg, err error) {
 	err = qMsg.FromBuffer(header, buf)
 	return
 }
-

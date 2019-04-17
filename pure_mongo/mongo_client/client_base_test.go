@@ -98,7 +98,7 @@ func TestBaseMongoClient_Insert1(t *testing.T) {
 	defer cancel()
 
 	inMsg := wire_protocol.NewInsertOneMessage("a", "b", false, XField{ID: 1, C: "1"})
-	err = cli.enhanceMsg(ctx, inMsg, &rspBody, &rspList)
+	err = cli.runAPIMsg(ctx, inMsg, &rspBody, &rspList)
 	if err != nil {
 		t.Errorf("insert error:%+v", err)
 	} else {
@@ -131,7 +131,7 @@ func TestBaseMongoClient_Insert2(t *testing.T) {
 		t.Errorf("new insert many msg error:%+v", err)
 	}
 
-	err = cli.enhanceMsg(ctx, inMsg, &rspBody, &rspList)
+	err = cli.runAPIMsg(ctx, inMsg, &rspBody, &rspList)
 	if err != nil {
 		t.Errorf("insert error:%+v", err)
 	} else {
@@ -152,7 +152,7 @@ func TestBaseMongoClient_Insert3(t *testing.T) {
 	x[1] = XField{ID: 6, C: "2"}
 
 	inMsg := wire_protocol.NewInsertManyMessageI("a", "b", false, x)
-	err = cli.enhanceMsg(ctx, inMsg, &rspBody, &rspList)
+	err = cli.runAPIMsg(ctx, inMsg, &rspBody, &rspList)
 	if err != nil {
 		t.Errorf("insert error:%+v", err)
 	} else {
@@ -173,7 +173,7 @@ func TestBaseMongoClient_Insert4(t *testing.T) {
 	x[1] = XField{ID: 6, C: "2"}
 
 	inMsg := wire_protocol.NewInsertManyMessageI("a", "b", true, x)
-	err = cli.enhanceMsg(ctx, inMsg, &rspBody, &rspList)
+	err = cli.runAPIMsg(ctx, inMsg, &rspBody, &rspList)
 	if err != nil {
 		t.Errorf("insert error:%+v", err)
 	} else {

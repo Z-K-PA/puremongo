@@ -7,8 +7,6 @@ import (
 	"reflect"
 )
 
-
-
 var (
 	ErrInvalidBsonDoc = errors.New("bson文档内容出错")
 	ErrLargeBsonDoc   = errors.New("bson文档内容过大")
@@ -139,3 +137,6 @@ func (bl BsonDocList) UnmarshalWithHandler(handler UnmarshalDocListHandler, val 
 	}
 	return
 }
+
+//处理bson binary函数
+type HandleBsonDocFunc func(rawBuf []byte) (err error)
