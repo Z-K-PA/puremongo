@@ -3,6 +3,7 @@ package wire_protocol
 import (
 	"errors"
 	driver_bson "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 	"pure_mongos/pure_mongo/binary"
 	"pure_mongos/pure_mongo/bson"
@@ -15,55 +16,152 @@ var (
 //查询的参数
 type FindOption struct {
 	CollectionName string      `bson:"find"`
-	Db          string `bson:"$db"`
+	Db             string      `bson:"$db"`
 	Filter         interface{} `bson:"filter"`
 	SortVal        interface{} `bson:"sort"`
 	Projection     interface{} `bson:"projection"`
 
-	SkipVal     int    `bson:"skip"`
-	LimitVal    int    `bson:"limit"`
-	SingleBatch bool   `bson:"singleBatch"`
-	MaxTimeMSVal int `bson:"maxTimeMS"`
+	SkipVal      int32 `bson:"skip"`
+	LimitVal     int32 `bson:"limit"`
+	MaxTimeMSVal int32 `bson:"maxTimeMS"`
+	SingleBatch  bool  `bson:"singleBatch"`
+}
+
+//序列化单项
+func marshalItem(buf *[]byte, pos int32, key string, val bsonx.Val) (itemLen int32, err error) {
+	var bsonBuf []byte
+
+	cursorBuf := (*buf)[pos:pos]
+	_, bsonBuf, err = bsonx.Elem{
+		Key:   key,
+		Value: val,
+	}.Value.MarshalAppendBSONValue(cursorBuf)
+	if err != nil {
+		return
+	}
+	itemLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+	return
 }
 
 //序列化
 func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
+	var bsonBuf []byte
+
 	begin := pos
+	bsonLen := int32(0)
+
 	pos += binary.WriteInt32(0, buf, pos)
 
-	newBuf := (*buf)[pos:pos]
-
-	_, newBuf, err = bsonx.Elem{
-		Key:"find",
-		Value:bsonx.String(option.CollectionName),
-	}.Value.MarshalAppendBSONValue(newBuf)
+	cursorBuf := (*buf)[pos:pos]
+	_, bsonBuf, err = bsonx.Elem{
+		Key:   "find",
+		Value: bsonx.String(option.CollectionName),
+	}.Value.MarshalAppendBSONValue(cursorBuf)
 	if err != nil {
 		return
 	}
-	pos += int32(len(newBuf))
-	newBuf = newBuf[pos:pos]
+	bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
 
-	_, newBuf, err = bsonx.Elem{
-		Key:"$db",
-		Value:bsonx.String(option.Db),
-	}.Value.MarshalAppendBSONValue(newBuf)
+	bsonLen, err = marshalItem(buf, pos, "find", bsonx.String(option.CollectionName))
 	if err != nil {
 		return
 	}
-	pos += int32(len(newBuf))
-	newBuf = newBuf[pos:pos]
+	pos += bsonLen
 
-	_, newBuf, err = bsonx.Elem{
-		Key:"filter",
-		Value:bsonx.String(option.Db),
-	}.Value.MarshalAppendBSONValue(newBuf)
+	cursorBuf = (*buf)[pos:pos]
+	_, cursorBuf, err = bsonx.Elem{
+		Key:   "$db",
+		Value: bsonx.String(option.Db),
+	}.Value.MarshalAppendBSONValue(cursorBuf)
 	if err != nil {
 		return
 	}
-	pos += int32(len(newBuf))
-	newBuf = newBuf[pos:pos]
+	bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+	pos += bsonLen
 
-	newBuf = append(newBuf, )
+	pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
+	pos += binary.WriteCString("filter", buf, pos)
+	bsonLen, err = bson.MarshalBsonWithBuffer(option.Filter, buf, pos)
+	if err != nil {
+		return
+	}
+	pos += bsonLen
+
+	if option.SortVal != nil {
+		pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
+		pos += binary.WriteCString("sort", buf, pos)
+		bsonLen, err = bson.MarshalBsonWithBuffer(option.SortVal, buf, pos)
+		if err != nil {
+			return
+		}
+		pos += bsonLen
+	}
+
+	if option.Projection != nil {
+		pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
+		pos += binary.WriteCString("projection", buf, pos)
+		bsonLen, err = bson.MarshalBsonWithBuffer(option.Projection, buf, pos)
+		if err != nil {
+			return
+		}
+		pos += bsonLen
+	}
+
+	if option.SkipVal > 0 {
+		cursorBuf = (*buf)[pos:pos]
+		_, cursorBuf, err = bsonx.Elem{
+			Key:   "skip",
+			Value: bsonx.Int32(option.SkipVal),
+		}.Value.MarshalAppendBSONValue(cursorBuf)
+		if err != nil {
+			return
+		}
+		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+		pos += bsonLen
+	}
+
+	if option.LimitVal > 0 {
+		cursorBuf = (*buf)[pos:pos]
+		_, cursorBuf, err = bsonx.Elem{
+			Key:   "limit",
+			Value: bsonx.Int32(option.LimitVal),
+		}.Value.MarshalAppendBSONValue(cursorBuf)
+		if err != nil {
+			return
+		}
+		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+		pos += bsonLen
+	}
+
+	if option.MaxTimeMSVal > 0 {
+		cursorBuf = (*buf)[pos:pos]
+		_, cursorBuf, err = bsonx.Elem{
+			Key:   "maxTimeMS",
+			Value: bsonx.Int32(option.MaxTimeMSVal),
+		}.Value.MarshalAppendBSONValue(cursorBuf)
+		if err != nil {
+			return
+		}
+		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+		pos += bsonLen
+	}
+
+	if option.SingleBatch {
+		cursorBuf = (*buf)[pos:pos]
+		_, cursorBuf, err = bsonx.Elem{
+			Key:   "singleBatch",
+			Value: bsonx.Boolean(option.SingleBatch),
+		}.Value.MarshalAppendBSONValue(cursorBuf)
+		if err != nil {
+			return
+		}
+		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+		pos += bsonLen
+	}
+
+	binary.WriteInt32(pos, buf, begin)
+	docLen = pos
+	return
 }
 
 //分批查询的参数
@@ -81,8 +179,7 @@ type GetMoreWithTimeout struct {
 
 //查询的参数 -- 带服务器超时
 type FindMetaWithTimeout struct {
-	FindOption   `bson:",inline"`
-
+	FindOption `bson:",inline"`
 }
 
 //注销cursor的参数
