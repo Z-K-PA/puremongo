@@ -15,6 +15,11 @@ type DocPair struct {
 	Value interface{}
 }
 
+//序列化接口
+type IMarshalBsonWithBuffer interface {
+	MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error)
+}
+
 //文档接口
 type IDoc interface {
 	MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error)

@@ -43,122 +43,101 @@ func marshalItem(buf *[]byte, pos int32, key string, val bsonx.Val) (itemLen int
 	return
 }
 
+//序列化文档单项
+func marshalDocItem(buf *[]byte, pos int32, key string, val interface{}) (docLen int32, err error) {
+	pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
+	pos += binary.WriteCString(key, buf, pos)
+	docLen, err = bson.MarshalBsonWithBuffer(val, buf, pos)
+	docLen += pos
+	return
+}
+
 //序列化
 func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
-	var bsonBuf []byte
 
+	//起始位置留4字节保存大小
 	begin := pos
+	pos += 4
+
 	bsonLen := int32(0)
 
-	pos += binary.WriteInt32(0, buf, pos)
-
-	cursorBuf := (*buf)[pos:pos]
-	_, bsonBuf, err = bsonx.Elem{
-		Key:   "find",
-		Value: bsonx.String(option.CollectionName),
-	}.Value.MarshalAppendBSONValue(cursorBuf)
-	if err != nil {
-		return
-	}
-	bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
-
+	//collection信息
 	bsonLen, err = marshalItem(buf, pos, "find", bsonx.String(option.CollectionName))
 	if err != nil {
 		return
 	}
 	pos += bsonLen
 
-	cursorBuf = (*buf)[pos:pos]
-	_, cursorBuf, err = bsonx.Elem{
-		Key:   "$db",
-		Value: bsonx.String(option.Db),
-	}.Value.MarshalAppendBSONValue(cursorBuf)
-	if err != nil {
-		return
-	}
-	bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
-	pos += bsonLen
-
-	pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
-	pos += binary.WriteCString("filter", buf, pos)
-	bsonLen, err = bson.MarshalBsonWithBuffer(option.Filter, buf, pos)
+	//db信息
+	bsonLen, err = marshalItem(buf, pos, "$db", bsonx.String(option.Db))
 	if err != nil {
 		return
 	}
 	pos += bsonLen
 
+	//过滤条件
+	bsonLen, err = marshalDocItem(buf, pos, "filter", option.Filter)
+	if err != nil {
+		return
+	}
+	pos += bsonLen
+
+	//排序条件
 	if option.SortVal != nil {
-		pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
-		pos += binary.WriteCString("sort", buf, pos)
-		bsonLen, err = bson.MarshalBsonWithBuffer(option.SortVal, buf, pos)
+		bsonLen, err = marshalDocItem(buf, pos, "sort", option.SortVal)
 		if err != nil {
 			return
 		}
 		pos += bsonLen
 	}
 
+	//返回的字段选定条件
 	if option.Projection != nil {
-		pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
-		pos += binary.WriteCString("projection", buf, pos)
-		bsonLen, err = bson.MarshalBsonWithBuffer(option.Projection, buf, pos)
+		bsonLen, err = marshalDocItem(buf, pos, "projection", option.Projection)
 		if err != nil {
 			return
 		}
 		pos += bsonLen
 	}
 
+	//cursor跳过的条目数
 	if option.SkipVal > 0 {
-		cursorBuf = (*buf)[pos:pos]
-		_, cursorBuf, err = bsonx.Elem{
-			Key:   "skip",
-			Value: bsonx.Int32(option.SkipVal),
-		}.Value.MarshalAppendBSONValue(cursorBuf)
+		bsonLen, err = marshalItem(buf, pos, "skip", bsonx.Int32(option.SkipVal))
 		if err != nil {
 			return
 		}
-		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
 		pos += bsonLen
 	}
 
+	//cursor选定的条目数
 	if option.LimitVal > 0 {
-		cursorBuf = (*buf)[pos:pos]
-		_, cursorBuf, err = bsonx.Elem{
-			Key:   "limit",
-			Value: bsonx.Int32(option.LimitVal),
-		}.Value.MarshalAppendBSONValue(cursorBuf)
+		bsonLen, err = marshalItem(buf, pos, "limit", bsonx.Int32(option.LimitVal))
 		if err != nil {
 			return
 		}
-		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
 		pos += bsonLen
 	}
 
+	//服务器查询最多使用的毫秒数，如果超时，服务器会终止查询
+	//如果为0，则没有限制
 	if option.MaxTimeMSVal > 0 {
-		cursorBuf = (*buf)[pos:pos]
-		_, cursorBuf, err = bsonx.Elem{
-			Key:   "maxTimeMS",
-			Value: bsonx.Int32(option.MaxTimeMSVal),
-		}.Value.MarshalAppendBSONValue(cursorBuf)
+		bsonLen, err = marshalItem(buf, pos, "maxTimeMS", bsonx.Int32(option.MaxTimeMSVal))
 		if err != nil {
 			return
 		}
-		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
 		pos += bsonLen
 	}
 
+	//是否在第一次cursor返回后就干掉cursor（服务器干掉，不需要客户端再发请求）
 	if option.SingleBatch {
-		cursorBuf = (*buf)[pos:pos]
-		_, cursorBuf, err = bsonx.Elem{
-			Key:   "singleBatch",
-			Value: bsonx.Boolean(option.SingleBatch),
-		}.Value.MarshalAppendBSONValue(cursorBuf)
+		bsonLen, err = marshalItem(buf, pos, "singleBatch", bsonx.Boolean(option.SingleBatch))
 		if err != nil {
 			return
 		}
-		bsonLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
 		pos += bsonLen
 	}
 
+	//回填大小
 	binary.WriteInt32(pos, buf, begin)
 	docLen = pos
 	return
@@ -174,12 +153,7 @@ type GetMore struct {
 type GetMoreWithTimeout struct {
 	CursorId       int64  `bson:"getMore"`
 	CollectionName string `bson:"collection"`
-	MaxTimeMS      int    `bson:"maxTimeMS"`
-}
-
-//查询的参数 -- 带服务器超时
-type FindMetaWithTimeout struct {
-	FindOption `bson:",inline"`
+	MaxTimeMS      int32  `bson:"maxTimeMS"`
 }
 
 //注销cursor的参数
