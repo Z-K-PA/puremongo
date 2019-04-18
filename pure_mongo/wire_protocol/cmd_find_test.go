@@ -2,6 +2,7 @@ package wire_protocol
 
 import (
 	"bytes"
+	driver_bson "go.mongodb.org/mongo-driver/bson"
 	"pure_mongos/pure_mongo/bson/mongo_driver_bson"
 	"testing"
 )
@@ -22,7 +23,7 @@ func TestFindOption_MarshalBsonWithBuffer(t *testing.T) {
 	}
 
 	buf1 := make([]byte, 512)
-	l1, _ := option.MarshalBsonWithBuffer2(&buf1, 10)
+	l1, _ := option._MarshalBsonWithBuffer(&buf1, 10)
 
 	buf2 := make([]byte, 512)
 	l2, _ := option.MarshalBsonWithBuffer(&buf2, 10)
@@ -33,4 +34,19 @@ func TestFindOption_MarshalBsonWithBuffer(t *testing.T) {
 	if !bytes.Equal(buf1, buf2) {
 		t.Errorf(" not equal")
 	}
+}
+
+func TestNullDocBuffer(t *testing.T) {
+	var elements []driver_bson.RawElement
+
+	bsonRaw := driver_bson.Raw(nil)
+	elements, err := bsonRaw.Elements()
+	if err != nil {
+		t.Errorf("error is %+v", err)
+	}
+
+	for _, element := range elements {
+		t.Logf("element key:%+v", element.Key())
+	}
+	return
 }

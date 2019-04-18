@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"pure_mongos/pure_mongo/binary"
-	"pure_mongos/pure_mongo/bson"
 	"pure_mongos/pure_mongo/limit"
 	"pure_mongos/pure_mongo/wire_protocol"
 	"sync"
@@ -270,32 +269,6 @@ func (cli *MongoClient) sendAndRecv(ctx context.Context, count int32) (err error
 	return
 }
 
-//发送一个query,接收一个reply
-func (cli *MongoClient) sendQueryRecvReply(ctx context.Context, qMsg *wire_protocol.QueryMsg) (
-	rMsg *wire_protocol.ReplyMsg, err error) {
-	count := int32(0)
-	//先序列化，如果序列化出错，返回，但连接还可以用
-	count, err = qMsg.MarshalBsonWithBuffer(&cli.buffer)
-	if err != nil {
-		return
-	}
-	if count > limit.ClientSendMaxSize {
-		err = ErrSendDataTooLarge
-		return
-	}
-
-	err = cli.sendAndRecv(ctx, count)
-	if err != nil {
-		return
-	}
-
-	rMsg, err = wire_protocol.ParseReplyMsg(cli.msgHeader, cli.buffer[:cli.msgHeader.MsgLen])
-	if err != nil {
-		cli.badSmell = true
-	}
-	return
-}
-
 //发送一个API msg,接收一个API msg
 func (cli *MongoClient) sendAPIMsgRecvAPIMsg(ctx context.Context, inMsg *wire_protocol.APIMsg) (
 	outMsg *wire_protocol.APIMsg, err error) {
@@ -316,80 +289,6 @@ func (cli *MongoClient) sendAPIMsgRecvAPIMsg(ctx context.Context, inMsg *wire_pr
 	}
 
 	outMsg, err = wire_protocol.ParseAPIMsg(cli.msgHeader, cli.buffer[:cli.msgHeader.MsgLen])
-	if err != nil {
-		cli.badSmell = true
-	}
-	return
-}
-
-//发送传入的字节流
-func (cli *MongoClient) sendSpecBuf(ctx context.Context, buf []byte) (reqId int32, err error) {
-	count := int32(len(buf))
-	select {
-	case <-ctx.Done():
-		//显式关闭连接
-		cli.Close()
-		err = ctx.Err()
-		return
-	default:
-	}
-
-	if count > limit.ClientSendMaxSize {
-		err = ErrSendDataTooLarge
-		return
-	}
-
-	//先加req
-	cli.reqId++
-	reqId = cli.reqId
-	binary.InjectHead(&buf, count, reqId)
-
-	err = cli._sendBuff(ctx, buf)
-	return
-}
-
-//发送字节流后接收字节流
-func (cli *MongoClient) sendSpecBufAndRecv(ctx context.Context, buf []byte) (err error) {
-	reqId := int32(0)
-
-	//设置connection超时
-	err = cli.setDeadline(ctx)
-	if err != nil {
-		cli.badSmell = true
-		return
-	}
-
-	//发送字节流
-	reqId, err = cli.sendSpecBuf(ctx, buf)
-	if err != nil {
-		cli.badSmell = true
-		return
-	}
-
-	//接收字节流
-	err = cli.readBuf(ctx)
-	if err != nil {
-		cli.badSmell = true
-		return
-	}
-
-	//请求回应id不匹配
-	if reqId != cli.msgHeader.ResTo {
-		cli.badSmell = true
-		err = wire_protocol.ErrInvalidMsgFromSrv
-		return
-	}
-	return
-}
-
-//发送固定字节流,接收一个reply
-func (cli *MongoClient) sendQueryBufRecvReply(ctx context.Context, buf []byte) (
-	rMsg *wire_protocol.ReplyMsg, err error) {
-	err = cli.sendSpecBufAndRecv(ctx, buf)
-	if err != nil {
-		return
-	}
-	rMsg, err = wire_protocol.ParseReplyMsg(cli.msgHeader, cli.buffer[:cli.msgHeader.MsgLen])
 	if err != nil {
 		cli.badSmell = true
 	}
@@ -423,46 +322,6 @@ func (cli *MongoClient) runAPIMsg(
 			cli.badSmell = true
 			return
 		}
-	}
-	return
-}
-
-//处理查询消息-带handler
-func (cli *MongoClient) queryWithHandler(
-	ctx context.Context,
-	qMsg *wire_protocol.QueryMsg,
-	rspHandler bson.UnmarshalDocListHandler,
-	rspVal interface{}) (err error) {
-
-	var rMsg *wire_protocol.ReplyMsg
-	rMsg, err = cli.sendQueryRecvReply(ctx, qMsg)
-	if err != nil {
-		return
-	}
-	err = rMsg.Documents.UnmarshalWithHandler(rspHandler, rspVal)
-	if err != nil {
-		cli.badSmell = true
-		return
-	}
-	return
-}
-
-//处理查询消息-带handler
-func (cli *MongoClient) queryBufWithHandler(
-	ctx context.Context,
-	buf []byte,
-	rspHandler bson.UnmarshalDocListHandler,
-	rspVal interface{}) (err error) {
-
-	var rMsg *wire_protocol.ReplyMsg
-	rMsg, err = cli.sendQueryBufRecvReply(ctx, buf)
-	if err != nil {
-		return
-	}
-	err = rMsg.Documents.UnmarshalWithHandler(rspHandler, rspVal)
-	if err != nil {
-		cli.badSmell = true
-		return
 	}
 	return
 }

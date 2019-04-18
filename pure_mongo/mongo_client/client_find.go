@@ -32,11 +32,22 @@ func (cli *MongoClient) Find(db string, collection string, filter map[string]int
 	return findCli
 }
 
-//发送命令后接收命令
+//发送find相关后接收消息
 func (cli *MongoClient) RunFetchCmd(
 	ctx context.Context,
-	inMsg *wire_protocol.APIMsg) (err error){
+	inMsg *wire_protocol.APIMsg,
+	batchKey string) (findResult *wire_protocol.FindResult, err error) {
 
+	var outMsg *wire_protocol.APIMsg
+
+	outMsg, err = cli.sendAPIMsgRecvAPIMsg(ctx, inMsg)
+	if err != nil {
+		return
+	}
+	findResult = &wire_protocol.FindResult{}
+
+	err = findResult.FromBuffer(outMsg.Body.Doc.Buf, "firstBatch")
+	return
 }
 
 //写链式调用 - sort (排序)
@@ -116,6 +127,7 @@ func (cli *MongoFindClient) verifyParam() error {
 
 //单个文档的查询
 func (cli *MongoFindClient) One(ctx context.Context, val interface{}) (err error) {
+	var findResult *wire_protocol.FindResult
 	err = cli.verifyParam()
 	if err != nil {
 		return
@@ -125,23 +137,18 @@ func (cli *MongoFindClient) One(ctx context.Context, val interface{}) (err error
 	cli.options.LimitVal = 1
 	inMsg := cli.getFindMsg()
 
-	result := wire_protocol.FindResult{}
-	unmarshalfunc := func(buf []byte) error {
-		return result.FromBuffer(buf, "firstBatch")
-	}
-	err = cli.MongoClient.RunAPIMsgWithBodyBinaryHandler(ctx, inMsg, unmarshalfunc)
+	findResult, err = cli.MongoClient.RunFetchCmd(ctx, inMsg, "firstBatch")
 	if err != nil {
 		return
 	}
 
-	if result.OK == 0 {
+	if findResult.OK == 0 {
 		err = ErrFindDataErr
 		return
 	}
 
-	fmt.Printf("result :%+v", result)
-	if len(result.DocList) > 0 {
-		err = bson.UnMarshalBson(result.DocList[0], val)
+	if len(findResult.DocList) > 0 {
+		err = bson.UnMarshalBson(findResult.DocList[0], val)
 	} else {
 		err = ErrNotFound
 	}
@@ -150,31 +157,25 @@ func (cli *MongoFindClient) One(ctx context.Context, val interface{}) (err error
 }
 
 //多个文档的查询
-func (cli *MongoFindClient) Find(ctx context.Context, val interface{}) (err error) {
+func (cli *MongoFindClient) Find(ctx context.Context) (err error) {
+	var findResult *wire_protocol.FindResult
 	err = cli.verifyParam()
 	if err != nil {
 		return
 	}
 
-	cli.options.LimitVal = 5
 	inMsg := cli.getFindMsg()
 
-	result := wire_protocol.FindResult{}
-	unmarshalfunc := func(buf []byte) error {
-		return result.FromBuffer(buf, "firstBatch")
-	}
-	err = cli.MongoClient.RunAPIMsgWithBodyBinaryHandler(ctx, inMsg, unmarshalfunc)
+	findResult, err = cli.MongoClient.RunFetchCmd(ctx, inMsg, "firstBatch")
 	if err != nil {
 		return
 	}
 
-	if result.OK == 0 {
+	if findResult.OK == 0 {
 		err = ErrFindDataErr
 		return
 	}
 
-	fmt.Printf("result doc len :%+v\n", len(result.DocList))
-	fmt.Printf("result:%+v\n", result.CursorId)
 	if len(result.DocList) > 0 {
 		err = bson.UnMarshalBson(result.DocList[0], val)
 	} else {
