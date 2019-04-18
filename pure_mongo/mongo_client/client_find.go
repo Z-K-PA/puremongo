@@ -3,7 +3,6 @@ package connection
 import (
 	"context"
 	"errors"
-	"fmt"
 	"pure_mongos/pure_mongo/bson"
 	"pure_mongos/pure_mongo/wire_protocol"
 )
@@ -157,7 +156,7 @@ func (cli *MongoFindClient) One(ctx context.Context, val interface{}) (err error
 }
 
 //多个文档的查询
-func (cli *MongoFindClient) Find(ctx context.Context) (err error) {
+func (cli *MongoFindClient) Iter(ctx context.Context) (cursor *Cursor, err error) {
 	var findResult *wire_protocol.FindResult
 	err = cli.verifyParam()
 	if err != nil {
@@ -176,11 +175,48 @@ func (cli *MongoFindClient) Find(ctx context.Context) (err error) {
 		return
 	}
 
-	if len(result.DocList) > 0 {
-		err = bson.UnMarshalBson(result.DocList[0], val)
-	} else {
-		err = ErrNotFound
-	}
-
+	cursor = newCursor(findResult.DocList)
 	return
+}
+
+var (
+	ErrCursorInvalidIndex = errors.New("cursor的index超出范围")
+)
+
+//遍历
+type Cursor struct {
+	docList     bson.ArrayDoc
+	cursorIndex int
+}
+
+//新建cursor
+func newCursor(docList bson.ArrayDoc) *Cursor {
+	cursor := &Cursor{
+		docList:     docList,
+		cursorIndex: -1,
+	}
+	return cursor
+}
+
+//Count
+func (c *Cursor) Count() int {
+	return len(c.docList)
+}
+
+//Next
+func (c *Cursor) Next() bool {
+	c.cursorIndex++
+	if c.cursorIndex >= len(c.docList) {
+		return false
+	}
+	return true
+}
+
+//Decode
+func (c *Cursor) Decode(val interface{}) (err error) {
+	docLen := len(c.docList)
+	if c.cursorIndex < 0 || c.cursorIndex >= docLen {
+		return ErrCursorInvalidIndex
+	}
+	return bson.UnMarshalBson(c.docList[c.cursorIndex], val)
 }

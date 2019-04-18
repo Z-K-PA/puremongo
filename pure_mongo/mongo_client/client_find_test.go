@@ -48,10 +48,13 @@ func TestMongoClient_Find1(t *testing.T) {
 	}
 
 	var x map[string]interface{}
-	err = cli.Find("a", "b", map[string]interface{}{}).Find(ctx, &x)
+	cursor, err := cli.Find("a", "b", map[string]interface{}{}).Iter(ctx)
 	if err != nil {
 		t.Errorf("find error is %+v", err)
 	} else {
-		t.Logf("result is %+v", x)
+		for cursor.Next() {
+			cursor.Decode(&x)
+			t.Logf("%+v", x)
+		}
 	}
 }
