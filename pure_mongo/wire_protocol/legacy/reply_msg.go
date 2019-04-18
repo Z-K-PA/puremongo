@@ -1,4 +1,4 @@
-package wire_protocol
+package legacy
 
 import (
 	"pure_mongos/pure_mongo/binary"

@@ -1,7 +1,9 @@
 package bson
 
 import (
+	"bytes"
 	"errors"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"pure_mongos/pure_mongo/binary"
 	"pure_mongos/pure_mongo/limit"
 	"reflect"
@@ -11,6 +13,17 @@ var (
 	ErrInvalidBsonDoc = errors.New("bson文档内容出错")
 	ErrLargeBsonDoc   = errors.New("bson文档内容过大")
 )
+
+var (
+	//空文档
+	_EmptyBsonDocBytes = []byte{5, 0, 0, 0, 0}
+)
+
+//反序列化处理函数
+type UnmarshalDocListHandler func()
+
+//处理bson binary函数
+type HandleBsonDocFunc func(rawBuf []byte) (err error)
 
 //bson文档
 type BsonDoc struct {
@@ -123,9 +136,6 @@ func (bl BsonDocList) Unmarshal(val interface{}) (err error) {
 	return
 }
 
-//反序列化处理函数
-type UnmarshalDocListHandler func()
-
 //反序列化 -- 带处理函数
 func (bl BsonDocList) UnmarshalWithHandler(handler UnmarshalDocListHandler, val interface{}) (err error) {
 	for _, doc := range bl {
@@ -138,5 +148,93 @@ func (bl BsonDocList) UnmarshalWithHandler(handler UnmarshalDocListHandler, val 
 	return
 }
 
-//处理bson binary函数
-type HandleBsonDocFunc func(rawBuf []byte) (err error)
+//数组文档
+type ArrayDoc [][]byte
+
+func readDocInList(buf []byte, pos int32) (outPos int32, out []byte, err error) {
+	var vType byte
+	var dSize int32
+
+	vType, err = binary.ReadByte(buf, pos)
+	if err != nil {
+		return
+	}
+	if vType != byte(bsontype.EmbeddedDocument) {
+		err = ErrInvalidBsonDoc
+		return
+	}
+	pos++
+
+	_keyEndPos := bytes.IndexByte(buf[pos:], 0)
+	if _keyEndPos == -1 {
+		err = ErrInvalidBsonDoc
+		return
+	}
+	//key的终结，value的起始点
+	pos += int32(_keyEndPos) + 1
+	//开始读大小了
+	dSize, err = binary.ReadInt32(buf, pos)
+	if err != nil {
+		return
+	}
+
+	outPos = pos + dSize
+	if int(outPos) > len(buf) {
+		err = ErrInvalidBsonDoc
+		return
+	}
+
+	out = buf[pos:outPos]
+	return
+}
+
+func (ad *ArrayDoc) ParseFromBuf(buf []byte) (bSize int32, err error) {
+	if bytes.Equal(_EmptyBsonDocBytes, buf) {
+		return 5, nil
+	}
+
+	var itemBuf []byte
+	pos := int32(0)
+
+	//字节流大小
+	bSize, err = binary.ReadInt32(buf, pos)
+	if err != nil {
+		return
+	}
+
+	//长度不符合要求
+	if int(bSize) != len(buf) {
+		err = ErrInvalidBsonDoc
+		return
+	}
+
+	//检查并移去最后一位
+	if buf[bSize-1] != 0 {
+		err = ErrInvalidBsonDoc
+		return
+	}
+	buf = buf[:bSize-1]
+
+	pos += 4
+	*ad = make([][]byte, 0, 16)
+	for {
+		//到底了
+		if pos == bSize-1 {
+			break
+		}
+		if pos > bSize-1 {
+			err = ErrInvalidBsonDoc
+			return
+		}
+		pos, itemBuf, err = readDocInList(buf, pos)
+		if err != nil {
+			return
+		}
+		if pos <= 0 {
+			err = ErrInvalidBsonDoc
+			return
+		}
+		*ad = append(*ad, itemBuf)
+	}
+	return
+}

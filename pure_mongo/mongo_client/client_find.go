@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"fmt"
 	"pure_mongos/pure_mongo/bson"
 	"pure_mongos/pure_mongo/wire_protocol"
 )
@@ -29,6 +30,13 @@ func (cli *MongoClient) Find(db string, collection string, filter map[string]int
 	findCli.options.CollectionName = collection
 	findCli.options.Filter = filter
 	return findCli
+}
+
+//发送命令后接收命令
+func (cli *MongoClient) RunFetchCmd(
+	ctx context.Context,
+	inMsg *wire_protocol.APIMsg) (err error){
+
 }
 
 //写链式调用 - sort (排序)
@@ -117,9 +125,61 @@ func (cli *MongoFindClient) One(ctx context.Context, val interface{}) (err error
 	cli.options.LimitVal = 1
 	inMsg := cli.getFindMsg()
 
+	result := wire_protocol.FindResult{}
 	unmarshalfunc := func(buf []byte) error {
-		return bson.UnMarshalBson(buf, val)
+		return result.FromBuffer(buf, "firstBatch")
 	}
 	err = cli.MongoClient.RunAPIMsgWithBodyBinaryHandler(ctx, inMsg, unmarshalfunc)
+	if err != nil {
+		return
+	}
+
+	if result.OK == 0 {
+		err = ErrFindDataErr
+		return
+	}
+
+	fmt.Printf("result :%+v", result)
+	if len(result.DocList) > 0 {
+		err = bson.UnMarshalBson(result.DocList[0], val)
+	} else {
+		err = ErrNotFound
+	}
+
+	return
+}
+
+//多个文档的查询
+func (cli *MongoFindClient) Find(ctx context.Context, val interface{}) (err error) {
+	err = cli.verifyParam()
+	if err != nil {
+		return
+	}
+
+	cli.options.LimitVal = 5
+	inMsg := cli.getFindMsg()
+
+	result := wire_protocol.FindResult{}
+	unmarshalfunc := func(buf []byte) error {
+		return result.FromBuffer(buf, "firstBatch")
+	}
+	err = cli.MongoClient.RunAPIMsgWithBodyBinaryHandler(ctx, inMsg, unmarshalfunc)
+	if err != nil {
+		return
+	}
+
+	if result.OK == 0 {
+		err = ErrFindDataErr
+		return
+	}
+
+	fmt.Printf("result doc len :%+v\n", len(result.DocList))
+	fmt.Printf("result:%+v\n", result.CursorId)
+	if len(result.DocList) > 0 {
+		err = bson.UnMarshalBson(result.DocList[0], val)
+	} else {
+		err = ErrNotFound
+	}
+
 	return
 }

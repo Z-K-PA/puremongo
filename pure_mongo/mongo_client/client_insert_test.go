@@ -106,9 +106,9 @@ func TestMongoClient_InsertMany4(t *testing.T) {
 	cli, ctx, cancel, err := testPrepare1(t, 300*time.Second)
 	defer cancel()
 
-	xs := make([]byte, 2)
+	xs := make([]byte, 1024*1024*10)
 
-	l := 3000
+	l := 3
 
 	for i := range xs {
 		xs[i] = 'a'

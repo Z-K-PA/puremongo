@@ -31,6 +31,11 @@ type FindOption struct {
 func marshalItem(buf *[]byte, pos int32, key string, val bsonx.Val) (itemLen int32, err error) {
 	var bsonBuf []byte
 
+	beginPos := pos
+	vType := val.Type()
+	pos += binary.WriteByte(byte(vType), buf, pos)
+	pos += binary.WriteCString(key, buf, pos)
+
 	cursorBuf := (*buf)[pos:pos]
 	_, bsonBuf, err = bsonx.Elem{
 		Key:   key,
@@ -39,16 +44,22 @@ func marshalItem(buf *[]byte, pos int32, key string, val bsonx.Val) (itemLen int
 	if err != nil {
 		return
 	}
-	itemLen = binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+	pos += binary.AppendBytesIfNeed(buf, bsonBuf, pos)
+
+	itemLen = pos - beginPos
+
 	return
 }
 
 //序列化文档单项
 func marshalDocItem(buf *[]byte, pos int32, key string, val interface{}) (docLen int32, err error) {
+	beginPos := pos
 	pos += binary.WriteByte(byte(bsontype.EmbeddedDocument), buf, pos)
 	pos += binary.WriteCString(key, buf, pos)
 	docLen, err = bson.MarshalBsonWithBuffer(val, buf, pos)
-	docLen += pos
+	pos += docLen
+
+	docLen = pos - beginPos
 	return
 }
 
@@ -137,10 +148,25 @@ func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen 
 		pos += bsonLen
 	}
 
+	//补零
+	pos += binary.WriteByte(0, buf, pos)
+
 	//回填大小
-	binary.WriteInt32(pos, buf, begin)
-	docLen = pos
+	docLen = pos - begin
+	binary.WriteInt32(docLen, buf, begin)
+
 	return
+}
+
+func (option *FindOption) MarshalBsonWithBuffer2(buf *[]byte, pos int32) (docLen int32, err error) {
+	if option.SortVal == nil {
+		option.SortVal = map[string]interface{}{}
+	}
+	if option.Projection == nil {
+		option.Projection = map[string]interface{}{}
+	}
+
+	return bson.MarshalBsonWithBuffer(*option, buf, pos)
 }
 
 //分批查询的参数
@@ -168,9 +194,9 @@ type FindResult struct {
 	//指令本身相关的返回信息
 	APIMsgRspCode `bson:",inline"`
 	//cursorId
-	CursorId int64
+	CursorId int64 `bson:"id"`
 	//返回结果
-	DocList bson.BsonDocList
+	DocList bson.ArrayDoc
 }
 
 func parseNumber2Int(val driver_bson.RawValue) int {
@@ -232,7 +258,7 @@ func (fRes *FindResult) FromBuffer(buf []byte, batchKey string) (err error) {
 			fRes.CodeName = parseString(element.Value())
 		case "code":
 			fRes.Code = parseNumber2Int(element.Value())
-		case "batchKey":
+		case "cursor":
 			err = fRes.parseCursor(element.Value(), batchKey)
 		}
 	}

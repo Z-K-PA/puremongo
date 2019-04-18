@@ -1,4 +1,4 @@
-package wire_protocol
+package legacy
 
 import (
 	"bytes"

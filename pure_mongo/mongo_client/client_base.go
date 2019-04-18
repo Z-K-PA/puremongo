@@ -297,7 +297,7 @@ func (cli *MongoClient) sendQueryRecvReply(ctx context.Context, qMsg *wire_proto
 }
 
 //发送一个API msg,接收一个API msg
-func (cli *MongoClient) sendAPIMsgeRecvAPIMsg(ctx context.Context, inMsg *wire_protocol.APIMsg) (
+func (cli *MongoClient) sendAPIMsgRecvAPIMsg(ctx context.Context, inMsg *wire_protocol.APIMsg) (
 	outMsg *wire_protocol.APIMsg, err error) {
 	count := int32(0)
 	//先序列化，如果序列化出错，返回，但连接还可以用
@@ -396,44 +396,6 @@ func (cli *MongoClient) sendQueryBufRecvReply(ctx context.Context, buf []byte) (
 	return
 }
 
-//处理查询消息
-func (cli *MongoClient) query(
-	ctx context.Context,
-	qMsg *wire_protocol.QueryMsg,
-	rspVal interface{}) (err error) {
-
-	var rMsg *wire_protocol.ReplyMsg
-	rMsg, err = cli.sendQueryRecvReply(ctx, qMsg)
-	if err != nil {
-		return
-	}
-	err = rMsg.Documents.Unmarshal(rspVal)
-	if err != nil {
-		cli.badSmell = true
-		return
-	}
-	return
-}
-
-//处理查询消息
-func (cli *MongoClient) queryBuf(
-	ctx context.Context,
-	buf []byte,
-	rspVal interface{}) (err error) {
-
-	var rMsg *wire_protocol.ReplyMsg
-	rMsg, err = cli.sendQueryBufRecvReply(ctx, buf)
-	if err != nil {
-		return
-	}
-	err = rMsg.Documents.Unmarshal(rspVal)
-	if err != nil {
-		cli.badSmell = true
-		return
-	}
-	return
-}
-
 //处理api msg消息
 func (cli *MongoClient) runAPIMsg(
 	ctx context.Context,
@@ -442,7 +404,7 @@ func (cli *MongoClient) runAPIMsg(
 	seqDocListVal interface{}) (err error) {
 
 	var outMsg *wire_protocol.APIMsg
-	outMsg, err = cli.sendAPIMsgeRecvAPIMsg(ctx, inMsg)
+	outMsg, err = cli.sendAPIMsgRecvAPIMsg(ctx, inMsg)
 	if err != nil {
 		return
 	}
@@ -462,7 +424,6 @@ func (cli *MongoClient) runAPIMsg(
 			return
 		}
 	}
-
 	return
 }
 
@@ -503,63 +464,5 @@ func (cli *MongoClient) queryBufWithHandler(
 		cli.badSmell = true
 		return
 	}
-	return
-}
-
-/* 暂时用不上，先注释
-//处理API消息-带handler
-func (cli *MongoClient) runAPIMsgWithHandler(
-	ctx context.Context,
-	inMsg *wire_protocol.APIMsg,
-	bodyRspVal interface{},
-	seqDocListHandler bson.UnmarshalDocListHandler,
-	seqDocListVal interface{}) (err error) {
-
-	var outMsg *wire_protocol.APIMsg
-	outMsg, err = cli.sendAPIMsgeRecvAPIMsg(ctx, inMsg)
-	if err != nil {
-		return
-	}
-
-	if bodyRspVal != nil {
-		err = outMsg.Body.Doc.Unmarshal(bodyRspVal)
-		if err != nil {
-			cli.badSmell = true
-			return
-		}
-	}
-
-	if seqDocListHandler != nil && seqDocListVal != nil {
-		err = outMsg.SeqDocList.DocList.UnmarshalWithHandler(seqDocListHandler, seqDocListVal)
-		if err != nil {
-			cli.badSmell = true
-			return
-		}
-	}
-
-	return
-}
-*/
-
-//处理API消息-带 binary handler
-func (cli *MongoClient) RunAPIMsgWithBodyBinaryHandler(
-	ctx context.Context,
-	inMsg *wire_protocol.APIMsg,
-	bodyBinaryHandler bson.HandleBsonDocFunc) (err error) {
-
-	var outMsg *wire_protocol.APIMsg
-	outMsg, err = cli.sendAPIMsgeRecvAPIMsg(ctx, inMsg)
-	if err != nil {
-		return
-	}
-
-	if bodyBinaryHandler != nil {
-		err = bodyBinaryHandler(outMsg.Body.Doc.Buf)
-		if err != nil {
-			cli.badSmell = true
-			return
-		}
-	}
-
 	return
 }

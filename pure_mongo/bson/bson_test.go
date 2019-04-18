@@ -72,16 +72,6 @@ type XSField struct {
 	Str string `bson:"a"`
 }
 
-func TestEncodeS(t *testing.T) {
-	v := XSField{
-		Str: "a",
-	}
-	buf, err := driver_bson.Marshal(v)
-
-	t.Logf("err of buf:%+v", err)
-	t.Logf("buf:%+v", buf)
-}
-
 func TestEncode4(t *testing.T) {
 	x := make([]byte, 1024*1024)
 	for i := range x {
