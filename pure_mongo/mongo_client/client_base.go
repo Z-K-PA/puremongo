@@ -325,3 +325,21 @@ func (cli *MongoClient) runAPIMsg(
 	}
 	return
 }
+
+//发送fetch相关后接收消息
+func (cli *MongoClient) runFetchCmd(
+	ctx context.Context,
+	inMsg *wire_protocol.APIMsg,
+	batchKey string) (findResult *wire_protocol.FindResult, err error) {
+
+	var outMsg *wire_protocol.APIMsg
+
+	outMsg, err = cli.sendAPIMsgRecvAPIMsg(ctx, inMsg)
+	if err != nil {
+		return
+	}
+	findResult = &wire_protocol.FindResult{}
+
+	err = findResult.FromBuffer(outMsg.Body.Doc.Buf, batchKey)
+	return
+}

@@ -12,13 +12,13 @@ func TestFindOption_MarshalBsonWithBuffer(t *testing.T) {
 		CollectionName: "1",
 		Db:             "2",
 		Filter:         map[string]interface{}{},
-		SortVal:        map[string]interface{}{},
+		Sort:           map[string]interface{}{},
 		Projection:     map[string]interface{}{},
 
-		SkipVal:      1,
-		LimitVal:     1,
-		MaxTimeMSVal: 1,
-		SingleBatch:  true,
+		Skip:        1,
+		Limit:       1,
+		MaxTimeMS:   1,
+		SingleBatch: true,
 	}
 
 	buf1 := make([]byte, 512)

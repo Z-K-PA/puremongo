@@ -17,13 +17,13 @@ type FindOption struct {
 	CollectionName string      `bson:"find"`
 	Db             string      `bson:"$db"`
 	Filter         interface{} `bson:"filter"`
-	SortVal        interface{} `bson:"sort"`
+	Sort           interface{} `bson:"sort"`
 	Projection     interface{} `bson:"projection"`
 
-	SkipVal      int32 `bson:"skip"`
-	LimitVal     int32 `bson:"limit"`
-	MaxTimeMSVal int32 `bson:"maxTimeMS"`
-	SingleBatch  bool  `bson:"singleBatch"`
+	Skip        int32 `bson:"skip"`
+	Limit       int32 `bson:"limit"`
+	MaxTimeMS   int32 `bson:"maxTimeMS"`
+	SingleBatch bool  `bson:"singleBatch"`
 }
 
 //序列化
@@ -57,8 +57,8 @@ func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen 
 	pos += bsonLen
 
 	//排序条件
-	if option.SortVal != nil {
-		bsonLen, err = marshalDocItem(buf, pos, "sort", option.SortVal)
+	if option.Sort != nil {
+		bsonLen, err = marshalDocItem(buf, pos, "sort", option.Sort)
 		if err != nil {
 			return
 		}
@@ -75,8 +75,8 @@ func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen 
 	}
 
 	//cursor跳过的条目数
-	if option.SkipVal > 0 {
-		bsonLen, err = marshalItem(buf, pos, "skip", bsonx.Int32(option.SkipVal))
+	if option.Skip > 0 {
+		bsonLen, err = marshalItem(buf, pos, "skip", bsonx.Int32(option.Skip))
 		if err != nil {
 			return
 		}
@@ -84,8 +84,8 @@ func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen 
 	}
 
 	//cursor选定的条目数
-	if option.LimitVal > 0 {
-		bsonLen, err = marshalItem(buf, pos, "limit", bsonx.Int32(option.LimitVal))
+	if option.Limit > 0 {
+		bsonLen, err = marshalItem(buf, pos, "limit", bsonx.Int32(option.Limit))
 		if err != nil {
 			return
 		}
@@ -94,8 +94,8 @@ func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen 
 
 	//服务器查询最多使用的毫秒数，如果超时，服务器会终止查询
 	//如果为0，则没有限制
-	if option.MaxTimeMSVal > 0 {
-		bsonLen, err = marshalItem(buf, pos, "maxTimeMS", bsonx.Int32(option.MaxTimeMSVal))
+	if option.MaxTimeMS > 0 {
+		bsonLen, err = marshalItem(buf, pos, "maxTimeMS", bsonx.Int32(option.MaxTimeMS))
 		if err != nil {
 			return
 		}
@@ -122,8 +122,8 @@ func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen 
 }
 
 func (option *FindOption) _MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
-	if option.SortVal == nil {
-		option.SortVal = map[string]interface{}{}
+	if option.Sort == nil {
+		option.Sort = map[string]interface{}{}
 	}
 	if option.Projection == nil {
 		option.Projection = map[string]interface{}{}
