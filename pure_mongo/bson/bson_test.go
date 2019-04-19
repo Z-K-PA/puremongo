@@ -2,8 +2,8 @@ package bson
 
 import (
 	"bytes"
-	driver_bson "github.com/globalsign/mgo/bson"
-	mgo_bson "go.mongodb.org/mongo-driver/bson"
+	mgo_bson "github.com/globalsign/mgo/bson"
+	driver_bson "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 	"testing"
 	"time"
@@ -153,4 +153,19 @@ func TestInterface(t *testing.T) {
 	}
 	t2 := time.Now()
 	t.Logf("total time :%+v -- average time:%+v", t2.Sub(t1), t2.Sub(t1)/time.Duration(l))
+}
+
+func TestNullDocBuffer(t *testing.T) {
+	var elements []driver_bson.RawElement
+
+	bsonRaw := driver_bson.Raw(nil)
+	elements, err := bsonRaw.Elements()
+	if err != nil {
+		t.Errorf("error is %+v", err)
+	}
+
+	for _, element := range elements {
+		t.Logf("element key:%+v", element.Key())
+	}
+	return
 }

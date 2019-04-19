@@ -1,9 +1,6 @@
 package connection
 
 import (
-	"context"
-	"net"
-	"pure_mongos/pure_mongo/bson/mongo_driver_bson"
 	"pure_mongos/pure_mongo/wire_protocol"
 	"reflect"
 	"testing"
@@ -13,21 +10,6 @@ import (
 type XField struct {
 	ID int    `bson:"_id"`
 	C  string `bson:"ct"`
-}
-
-func testPrepare1(t *testing.T, duration time.Duration) (*MongoClient, context.Context, context.CancelFunc, error) {
-	mongo_driver_bson.InitDriver()
-
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
-
-	cli, err := DialMongoClient(ctx, &net.Dialer{
-		KeepAlive: 3 * time.Minute,
-	}, "localhost:27017")
-	if err != nil {
-		t.Errorf("connect error :%+v", err)
-	}
-
-	return cli, ctx, cancel, err
 }
 
 func TestBaseMongoClient_Insert1(t *testing.T) {

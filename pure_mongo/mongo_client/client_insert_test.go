@@ -1,10 +1,28 @@
 package connection
 
 import (
+	"context"
 	"fmt"
+	"net"
+	"pure_mongos/pure_mongo/bson/mongo_driver_bson"
 	"testing"
 	"time"
 )
+
+func testPrepare1(t *testing.T, duration time.Duration) (*MongoClient, context.Context, context.CancelFunc, error) {
+	mongo_driver_bson.InitDriver()
+
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+
+	cli, err := DialMongoClient(ctx, &net.Dialer{
+		KeepAlive: 3 * time.Minute,
+	}, "localhost:27017")
+	if err != nil {
+		t.Errorf("connect error :%+v", err)
+	}
+
+	return cli, ctx, cancel, err
+}
 
 func TestMongoClient_InsertMany1(t *testing.T) {
 	cli, ctx, cancel, err := testPrepare1(t, 3*time.Second)

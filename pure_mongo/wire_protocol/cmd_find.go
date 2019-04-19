@@ -132,26 +132,6 @@ func (option *FindOption) _MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen
 	return bson.MarshalBsonWithBuffer(*option, buf, pos)
 }
 
-//分批查询的参数
-type GetMore struct {
-	CursorId       int64  `bson:"getMore"`
-	CollectionName string `bson:"collection"`
-}
-
-//分批查询的参数-- 带服务器超时
-type GetMoreWithTimeout struct {
-	CursorId       int64  `bson:"getMore"`
-	CollectionName string `bson:"collection"`
-	MaxTimeMS      int32  `bson:"maxTimeMS"`
-}
-
-//注销cursor的参数
-type CursorKill struct {
-	CollectionName string  `bson:"killCursors"`
-	CursorList     []int64 `bson:"cursors"`
-	Db             string  `bson:"$db"`
-}
-
 //Find返回结果
 type FindResult struct {
 	//指令本身相关的返回信息
@@ -207,4 +187,43 @@ func (fRes *FindResult) FromBuffer(buf []byte, batchKey string) (err error) {
 		}
 	}
 	return
+}
+
+//分批查询的参数
+type GetMore struct {
+	//cursor编号
+	CursorId int64 `bson:"getMore"`
+	//collection名称
+	CollectionName string `bson:"collection"`
+}
+
+//分批查询的参数-- 带服务器超时
+type GetMoreWithTimeout struct {
+	//cursor编号
+	CursorId int64 `bson:"getMore"`
+	//collection名称
+	CollectionName string `bson:"collection"`
+	//服务器超时
+	MaxTimeMS int32 `bson:"maxTimeMS"`
+}
+
+//注销cursor的请求
+type CursorKillReq struct {
+	CollectionName string  `bson:"killCursors"`
+	CursorList     []int64 `bson:"cursors"`
+	Db             string  `bson:"$db"`
+}
+
+//注销cursor的结果
+type CursorKillResult struct {
+	//指令本身相关的返回信息
+	APIMsgRspCode `bson:",inline"`
+	//被杀死的cursor
+	CursorsKilled []int64 `bson:"cursorsKilled"`
+	//没有找到的cursor
+	CursorsNotFound []int64 `bson:"cursorsNotFound"`
+	//活着的cursor
+	CursorsAlive []int64 `bson:"cursorsAlive"`
+	//未知的cursor
+	CursorsUnknown []int64 `bson:"cursorsUnknown"`
 }

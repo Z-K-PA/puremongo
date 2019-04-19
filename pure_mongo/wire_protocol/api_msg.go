@@ -246,4 +246,3 @@ type APIMsgRspCode struct {
 	//插入消息出错的错误原因
 	ErrMsg string `bson:"errmsg"`
 }
-

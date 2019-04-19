@@ -52,9 +52,23 @@ func TestMongoClient_Find1(t *testing.T) {
 	if err != nil {
 		t.Errorf("find error is %+v", err)
 	} else {
-		for cursor.Next() {
-			cursor.Decode(&x)
-			t.Logf("%+v", x)
+		defer cursor.Close(ctx)
+		for {
+			ok, err := cursor.Next(ctx)
+			if err != nil {
+				t.Errorf("cursor error:%+v", err)
+				return
+			}
+			if !ok {
+				t.Logf("cursor end")
+				return
+			}
+			err = cursor.Decode(&x)
+			if err != nil {
+				t.Errorf("decode error:%+v", err)
+				return
+			}
+			t.Logf("cursorid:%+v  --- %+v", cursor.cursorId, x)
 		}
 	}
 }
