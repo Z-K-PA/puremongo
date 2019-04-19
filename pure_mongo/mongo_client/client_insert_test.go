@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+type XField struct {
+	ID int    `bson:"_id"`
+	C  string `bson:"ct"`
+}
+
 func testPrepare1(t *testing.T, duration time.Duration) (*MongoClient, context.Context, context.CancelFunc, error) {
 	mongo_driver_bson.InitDriver()
 
@@ -28,7 +33,7 @@ func TestMongoClient_InsertMany1(t *testing.T) {
 	cli, ctx, cancel, err := testPrepare1(t, 3*time.Second)
 	defer cancel()
 
-	l := 200
+	l := 400
 	x := make([]XField, l)
 	for i := 0; i < l; i++ {
 		x[i].ID = i

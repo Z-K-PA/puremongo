@@ -193,6 +193,8 @@ func (fRes *FindResult) FromBuffer(buf []byte, batchKey string) (err error) {
 type GetMore struct {
 	//cursor编号
 	CursorId int64 `bson:"getMore"`
+	//db名称
+	Db string `bson:"$db"`
 	//collection名称
 	CollectionName string `bson:"collection"`
 }
@@ -201,6 +203,8 @@ type GetMore struct {
 type GetMoreWithTimeout struct {
 	//cursor编号
 	CursorId int64 `bson:"getMore"`
+	//db名称
+	Db string `bson:"$db"`
 	//collection名称
 	CollectionName string `bson:"collection"`
 	//服务器超时
@@ -210,8 +214,8 @@ type GetMoreWithTimeout struct {
 //注销cursor的请求
 type CursorKillReq struct {
 	CollectionName string  `bson:"killCursors"`
-	CursorList     []int64 `bson:"cursors"`
 	Db             string  `bson:"$db"`
+	CursorList     []int64 `bson:"cursors"`
 }
 
 //注销cursor的结果

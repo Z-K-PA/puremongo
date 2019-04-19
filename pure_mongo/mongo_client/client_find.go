@@ -48,7 +48,7 @@ func (cli *MongoClient) RunFetchCmd(
 	}
 	findResult = &wire_protocol.FindResult{}
 
-	err = findResult.FromBuffer(outMsg.Body.Doc.Buf, "firstBatch")
+	err = findResult.FromBuffer(outMsg.Body.Doc.Buf, batchKey)
 	return
 }
 
@@ -186,12 +186,14 @@ func (c *Cursor) getMoreMsg() *wire_protocol.APIMsg {
 	if c.cli.options.MaxTimeMSVal != 0 {
 		getMoreMsg.SetBodyDoc(wire_protocol.GetMoreWithTimeout{
 			CursorId:       c.cursorId,
+			Db:             c.cli.options.Db,
 			CollectionName: c.cli.options.CollectionName,
 			MaxTimeMS:      c.cli.options.MaxTimeMSVal,
 		})
 	} else {
 		getMoreMsg.SetBodyDoc(wire_protocol.GetMore{
 			CursorId:       c.cursorId,
+			Db:             c.cli.options.Db,
 			CollectionName: c.cli.options.CollectionName,
 		})
 	}
@@ -202,8 +204,8 @@ func (c *Cursor) getMoreMsg() *wire_protocol.APIMsg {
 func (c *Cursor) getCloseCursorMsg() *wire_protocol.APIMsg {
 	killMsg := wire_protocol.NewAPIMsg()
 	killMsg.SetBodyDoc(wire_protocol.CursorKillReq{
-		Db:             c.cli.options.Db,
 		CollectionName: c.cli.options.CollectionName,
+		Db:             c.cli.options.Db,
 		CursorList:     []int64{c.cursorId},
 	})
 	return killMsg
@@ -263,7 +265,7 @@ func (c *Cursor) Count() int {
 func (c *Cursor) Next(ctx context.Context) (ok bool, err error) {
 	docListLen := len(c.findResult.DocList)
 	if docListLen == 0 {
-		//没有任何数据
+		//此回合没有任何数据，没必要进行下一个回合了
 		return false, nil
 	}
 
