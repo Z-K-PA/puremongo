@@ -53,6 +53,8 @@ func (d DriverMode) String() string {
 	}
 }
 
+type Hash map[string]interface{}
+
 /*--------------------包的全局变量,主要是函数的定义和模式的定义-----*/
 
 //序列化bson-带buffer

@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"pure_mongos/pure_mongo/bson"
 	"pure_mongos/pure_mongo/wire_protocol"
 )
 
@@ -46,7 +47,7 @@ func (cli *MongoAggregateClient) VerifyParam() error {
 		return ErrAggregateCmdInvalid
 	} else {
 		if cli.options.Cursor == nil {
-			cli.options.Cursor = map[string]interface{}{}
+			cli.options.Cursor = bson.Hash{}
 		}
 		return nil
 	}
@@ -55,13 +56,30 @@ func (cli *MongoAggregateClient) VerifyParam() error {
 //设置单次查询
 func (cli *MongoAggregateClient) SetOnce() {
 	//加上limit = 1的限制
-	cli.Pipeline(map[string]interface{}{"limit": 1})
+	cli.Pipeline(bson.Hash{"$limit": 1})
+}
+
+//获取db name
+func (cli *MongoAggregateClient) GetDbName() string {
+	return cli.options.Db
+}
+
+//获取collection name
+func (cli *MongoAggregateClient) GetCollectionName() string {
+	return cli.options.CollectionName
+}
+
+//获取maxTimeMS
+func (cli *MongoAggregateClient) GetMaxTimeMs() int32 {
+	return cli.options.MaxTimeMS
 }
 
 //写链式调用 -- Pipeline
-func (cli *MongoAggregateClient) Pipeline(pipeline interface{}) *MongoAggregateClient {
-	if pipeline != nil {
-		cli.options.Pipeline = append(cli.options.Pipeline, pipeline)
+func (cli *MongoAggregateClient) Pipeline(pipelines ...interface{}) *MongoAggregateClient {
+	for _, pipeline := range pipelines {
+		if pipeline != nil {
+			cli.options.Pipeline = append(cli.options.Pipeline, pipeline)
+		}
 	}
 	return cli
 }
@@ -93,24 +111,5 @@ func (cli *MongoAggregateClient) One(ctx context.Context, val interface{}) (err 
 
 //多个文档的查询
 func (cli *MongoAggregateClient) Iter(ctx context.Context) (cursor *Cursor, err error) {
-	var findResult *wire_protocol.FindResult
-	err = cli.VerifyParam()
-	if err != nil {
-		return
-	}
-
-	inMsg := cli.GetFindMsg()
-
-	findResult, err = cli.MongoClient.runFetchCmd(ctx, inMsg, "firstBatch")
-	if err != nil {
-		return
-	}
-
-	if findResult.OK == 0 {
-		err = ErrFindDataErr
-		return
-	}
-
-	cursor = newCursor(cli, findResult, cli.options.Db, cli.options.CollectionName, cli.options.MaxTimeMS)
-	return
+	return handleIterFetch(ctx, cli)
 }

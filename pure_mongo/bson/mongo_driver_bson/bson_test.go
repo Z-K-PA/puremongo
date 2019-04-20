@@ -60,7 +60,7 @@ func marshalTest(buf *[]byte, pos int32) (docLen int32, err error) {
 	pos += bsonLen
 
 	//过滤条件
-	bsonLen, err = marshalDocItem(buf, pos, "b", map[string]interface{}{"A": "A"})
+	bsonLen, err = marshalDocItem(buf, pos, "b", bson.Hash{"A": "A"})
 	if err != nil {
 		return
 	}
@@ -77,10 +77,10 @@ func marshalTest(buf *[]byte, pos int32) (docLen int32, err error) {
 func TestEncodeS(t *testing.T) {
 	InitDriver()
 
-	v := make(map[string]interface{})
+	v := make(bson.Hash)
 
 	v["a"] = "a"
-	v["b"] = map[string]interface{}{"A": "A"}
+	v["b"] = bson.Hash{"A": "A"}
 
 	buf, err := driver_bson.Marshal(v)
 

@@ -20,13 +20,16 @@ type IFetchMongoClient interface {
 	VerifyParam() error
 	//设定只查询一条数据的参数
 	SetOnce()
+	//获取db name
+	GetDbName() string
+	//获取collection name
+	GetCollectionName() string
+	//获取maxTimeMS
+	GetMaxTimeMs() int32
 }
 
 //遍历
 type Cursor struct {
-	db          string                    //db name
-	collection  string                    //collection name
-	maxTimeMs   int32                     //在服务器查询的最长时间，超过后服务器会终止查询
 	cursorId    int64                     //对应的服务器游标
 	findResult  *wire_protocol.FindResult //当前查询结果
 	cli         IFetchMongoClient         //对应的client
@@ -36,16 +39,10 @@ type Cursor struct {
 //新建cursor
 func newCursor(
 	cli IFetchMongoClient,
-	findResult *wire_protocol.FindResult,
-	db string,
-	collection string,
-	maxTimeMs int32) *Cursor {
+	findResult *wire_protocol.FindResult) *Cursor {
 
 	cursor := &Cursor{
-		db:         db,
-		collection: collection,
-		maxTimeMs:  maxTimeMs,
-		cli:        cli,
+		cli: cli,
 	}
 	cursor.resetCursor(findResult)
 	return cursor
@@ -61,19 +58,22 @@ func (c *Cursor) resetCursor(findResult *wire_protocol.FindResult) {
 //设置分批查询参数
 func (c *Cursor) getMoreMsg() *wire_protocol.APIMsg {
 	getMoreMsg := wire_protocol.NewAPIMsg()
+	db := c.cli.GetDbName()
+	collection := c.cli.GetCollectionName()
+	maxTimeMs := c.cli.GetMaxTimeMs()
 
-	if c.maxTimeMs != 0 {
+	if maxTimeMs != 0 {
 		getMoreMsg.SetBodyDoc(wire_protocol.GetMoreWithTimeout{
 			CursorId:       c.cursorId,
-			Db:             c.db,
-			CollectionName: c.collection,
-			MaxTimeMS:      c.maxTimeMs,
+			Db:             db,
+			CollectionName: collection,
+			MaxTimeMS:      maxTimeMs,
 		})
 	} else {
 		getMoreMsg.SetBodyDoc(wire_protocol.GetMore{
 			CursorId:       c.cursorId,
-			Db:             c.db,
-			CollectionName: c.collection,
+			Db:             db,
+			CollectionName: collection,
 		})
 	}
 	return getMoreMsg
@@ -83,8 +83,8 @@ func (c *Cursor) getMoreMsg() *wire_protocol.APIMsg {
 func (c *Cursor) getCloseCursorMsg() *wire_protocol.APIMsg {
 	killMsg := wire_protocol.NewAPIMsg()
 	killMsg.SetBodyDoc(wire_protocol.CursorKillReq{
-		CollectionName: c.collection,
-		Db:             c.db,
+		CollectionName: c.cli.GetCollectionName(),
+		Db:             c.cli.GetDbName(),
 		CursorList:     []int64{c.cursorId},
 	})
 	return killMsg

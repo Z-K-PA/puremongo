@@ -22,7 +22,7 @@ type MongoFindClient struct {
 }
 
 //做个包装 -- db, collection, filter (此3项必填)
-func (cli *MongoClient) Find(db string, collection string, filter map[string]interface{}) *MongoFindClient {
+func (cli *MongoClient) Find(db string, collection string, filter interface{}) *MongoFindClient {
 	findCli := &MongoFindClient{
 		MongoClient: cli,
 		options:     &wire_protocol.FindOption{},
@@ -59,6 +59,21 @@ func (cli *MongoFindClient) VerifyParam() error {
 func (cli *MongoFindClient) SetOnce() {
 	cli.options.SingleBatch = true
 	cli.options.Limit = 1
+}
+
+//获取db name
+func (cli *MongoFindClient) GetDbName() string {
+	return cli.options.Db
+}
+
+//获取collection name
+func (cli *MongoFindClient) GetCollectionName() string {
+	return cli.options.CollectionName
+}
+
+//获取maxTimeMS
+func (cli *MongoFindClient) GetMaxTimeMs() int32 {
+	return cli.options.MaxTimeMS
 }
 
 //写链式调用 - sort (排序)
@@ -98,24 +113,5 @@ func (cli *MongoFindClient) One(ctx context.Context, val interface{}) (err error
 
 //多个文档的查询
 func (cli *MongoFindClient) Iter(ctx context.Context) (cursor *Cursor, err error) {
-	var findResult *wire_protocol.FindResult
-	err = cli.VerifyParam()
-	if err != nil {
-		return
-	}
-
-	inMsg := cli.GetFindMsg()
-
-	findResult, err = cli.MongoClient.runFetchCmd(ctx, inMsg, "firstBatch")
-	if err != nil {
-		return
-	}
-
-	if findResult.OK == 0 {
-		err = ErrFindDataErr
-		return
-	}
-
-	cursor = newCursor(cli, findResult, cli.options.Db, cli.options.CollectionName, cli.options.MaxTimeMS)
-	return
+	return handleIterFetch(ctx, cli)
 }

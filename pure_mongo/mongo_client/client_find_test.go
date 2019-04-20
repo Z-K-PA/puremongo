@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"pure_mongos/pure_mongo/bson"
 	"testing"
 	"time"
 )
@@ -13,8 +14,8 @@ func TestMongoClient_FindOne1(t *testing.T) {
 		t.Errorf("init error is %+v", err)
 	}
 
-	var x map[string]interface{}
-	err = cli.Find("a", "b", map[string]interface{}{}).One(ctx, &x)
+	var x bson.Hash
+	err = cli.Find("a", "b", bson.Hash{}).One(ctx, &x)
 	if err != nil {
 		t.Errorf("find error is %+v", err)
 	} else {
@@ -31,7 +32,7 @@ func TestMongoClient_FindOne2(t *testing.T) {
 	}
 
 	var x XField
-	err = cli.Find("a", "b", map[string]interface{}{"_id": 100000}).One(ctx, &x)
+	err = cli.Find("a", "b", bson.Hash{"_id": 100000}).One(ctx, &x)
 	if err != nil {
 		t.Errorf("find error is %+v", err)
 	} else {
@@ -47,8 +48,8 @@ func TestMongoClient_Find1(t *testing.T) {
 		t.Errorf("init error is %+v", err)
 	}
 
-	var x map[string]interface{}
-	cursor, err := cli.Find("a", "b", map[string]interface{}{}).Iter(ctx)
+	var x bson.Hash
+	cursor, err := cli.Find("a", "b", bson.Hash{}).Iter(ctx)
 	if err != nil {
 		t.Errorf("find error is %+v", err)
 	} else {
@@ -81,8 +82,8 @@ func TestMongoClient_Find2(t *testing.T) {
 		t.Errorf("init error is %+v", err)
 	}
 
-	var x map[string]interface{}
-	cursor, err := cli.Find("a", "b", map[string]interface{}{}).Iter(ctx)
+	var x bson.Hash
+	cursor, err := cli.Find("a", "b", bson.Hash{}).Iter(ctx)
 	if err != nil {
 		t.Errorf("find error is %+v", err)
 	} else {
@@ -120,8 +121,8 @@ func TestMongoClient_Find3(t *testing.T) {
 		t.Errorf("init error is %+v", err)
 	}
 
-	var x map[string]interface{}
-	cursor, err := cli.Find("a", "b", map[string]interface{}{}).Iter(ctx)
+	var x bson.Hash
+	cursor, err := cli.Find("a", "b", bson.Hash{}).Iter(ctx)
 	if err != nil {
 		t.Errorf("find error is %+v", err)
 	} else {

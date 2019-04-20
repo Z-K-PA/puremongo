@@ -123,10 +123,10 @@ func (option *FindOption) MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen 
 
 func (option *FindOption) _MarshalBsonWithBuffer(buf *[]byte, pos int32) (docLen int32, err error) {
 	if option.Sort == nil {
-		option.Sort = map[string]interface{}{}
+		option.Sort = bson.Hash{}
 	}
 	if option.Projection == nil {
-		option.Projection = map[string]interface{}{}
+		option.Projection = bson.Hash{}
 	}
 
 	return bson.MarshalBsonWithBuffer(*option, buf, pos)

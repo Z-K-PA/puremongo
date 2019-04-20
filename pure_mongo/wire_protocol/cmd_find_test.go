@@ -2,6 +2,7 @@ package wire_protocol
 
 import (
 	"bytes"
+	"pure_mongos/pure_mongo/bson"
 	"pure_mongos/pure_mongo/bson/mongo_driver_bson"
 	"testing"
 )
@@ -11,9 +12,9 @@ func TestFindOption_MarshalBsonWithBuffer(t *testing.T) {
 	option := FindOption{
 		CollectionName: "1",
 		Db:             "2",
-		Filter:         map[string]interface{}{},
-		Sort:           map[string]interface{}{},
-		Projection:     map[string]interface{}{},
+		Filter:         bson.Hash{},
+		Sort:           bson.Hash{},
+		Projection:     bson.Hash{},
 
 		Skip:        1,
 		Limit:       1,

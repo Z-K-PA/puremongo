@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"fmt"
 	"pure_mongos/pure_mongo/bson"
 	"pure_mongos/pure_mongo/wire_protocol"
 )
@@ -26,6 +27,7 @@ func handleOnceFetch(ctx context.Context, cli IFetchMongoClient, val interface{}
 
 	if findResult.OK == 0 {
 		err = ErrFindDataErr
+		fmt.Printf("find result is %+v", findResult)
 		return
 	}
 
@@ -57,6 +59,6 @@ func handleIterFetch(ctx context.Context, cli IFetchMongoClient) (cursor *Cursor
 		return
 	}
 
-	cursor = newCursor(cli, findResult, cli.options.Db, cli.options.CollectionName, cli.options.MaxTimeMS)
+	cursor = newCursor(cli, findResult)
 	return
 }

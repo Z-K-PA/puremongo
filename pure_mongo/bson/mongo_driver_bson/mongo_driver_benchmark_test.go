@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-func getTestMap() map[string]interface{} {
-	x := make(map[string]interface{})
+func getTestMap() bson.Hash {
+	x := make(bson.Hash)
 	x["field1"] = 1
 	x["field2"] = `abcdefgg sffdadfa lll1l3   424243432 234232ll  afadafal llllnnkcnooqn lozooo1n130445454lll sssss ll`
 	x["field3"] = `abcdefgg sffdadfa lll1l3   424243432 234232ll  afadafal llllnnkcnooqn lozooo1n130445454lll sssss ll`
@@ -42,7 +42,7 @@ func TestMgoBufferWithMap(t *testing.T) {
 
 	t1 := time.Now()
 	for i := 0; i < 100000; i++ {
-		var xVal map[string]interface{}
+		var xVal bson.Hash
 		outL, err := bson.MarshalBsonWithBuffer(x, &cacheBuf, 0)
 		if int(outL) > len(cacheBuf) {
 			t.Fail()
@@ -66,7 +66,7 @@ func TestMgoWithMap(t *testing.T) {
 
 	t1 := time.Now()
 	for i := 0; i < 100000; i++ {
-		var xVal map[string]interface{}
+		var xVal bson.Hash
 		outBuf, err := bson.MarshalBson(x)
 		if err != nil {
 			t.Errorf("marsal error :%+v", err)

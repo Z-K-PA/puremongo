@@ -38,7 +38,7 @@ func TestEncode2(t *testing.T) {
 		t.Errorf("1 marshal error:%+v\n", err)
 	}
 
-	m := map[string]interface{}{
+	m := Hash{
 		"a": 0,
 	}
 	buf2, err := driver_bson.Marshal(m)
@@ -105,7 +105,7 @@ func TestEncode5(t *testing.T) {
 	}
 	t.Logf("buf2 is %+v", buf2)
 
-	var x1, x2 map[string]interface{}
+	var x1, x2 Hash
 
 	err = driver_bson.Unmarshal(buf1, &x1)
 	if err != nil {
